@@ -1,49 +1,132 @@
+<div align="center">
+
+<img src="assets/logo.svg" alt="curupira" width="160">
+
 # curupira
 
-End-to-end tests for Emcash, built with [Playwright](https://playwright.dev). They use each product the way a user would: through the browser, or through the same API calls the mobile app makes.
+**Testes end-to-end da Emcash**
 
-| Where | What |
-|---|---|
-| [WRITING-A-TEST.md](WRITING-A-TEST.md) | How to write a test, and the rules |
-| [docs/](docs/) | What we know about each service: endpoints, rules, limits, known bugs ([wallet](docs/wallet.md)) |
-| [PLAN.md](PLAN.md) | The strategy: decisions, prerequisites, open items |
-| `tests/<product>/` | The tests |
-| `support/` | Shared code: `env()`, `newUser()`, the `walletDb` fixture |
-| `examples/` | Test templates and the CI trigger step for application repos (not run) |
+*O curupira guarda a floresta e tem os pés virados para trás.*<br>
+*Estes testes guardam os produtos e olham para trás: pegam o que funcionava e parou de funcionar.*
 
-| Test | What it covers |
-|---|---|
-| `tests/app/login.spec.ts` | App login with the right and the wrong password |
-| `tests/app/registration.spec.ts` | Simplified registration, from the SMS code to the additional information; and registration without a confirmed SMS is rejected |
+[![e2e](https://github.com/GabrielBruno7/curupira/actions/workflows/e2e.yml/badge.svg)](https://github.com/GabrielBruno7/curupira/actions/workflows/e2e.yml)
+![Playwright](https://img.shields.io/badge/Playwright-1.63-2EAD33?logo=playwright&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/roda_com-Docker-2496ED?logo=docker&logoColor=white)
 
-## Running (you only need Docker)
+</div>
+
+---
+
+## 🌳 O que é
+
+Testes que usam os produtos da Emcash **como um usuário usaria**: pelo navegador nos portais, e pelas mesmas chamadas de API que o app faz. Eles rodam depois de cada deploy no staging e avisam quando algo que funcionava quebrou.
+
+> [!IMPORTANT]
+> **Nunca aponte os testes para um ambiente com dados reais:** eles criam usuários. E o staging envia **SMS e e-mails de verdade** (veja [docs/wallet.md](docs/wallet.md)).
+
+## 🧪 O que já é testado
+
+| | Teste | O que cobre |
+|---|---|---|
+| 🔐 | [`tests/app/login.spec.ts`](tests/app/login.spec.ts) | Login do app com a senha certa (e o token funciona) e com a senha errada |
+| 📝 | [`tests/app/registration.spec.ts`](tests/app/registration.spec.ts) | Cadastro simplificado: SMS → e-mail → cadastro → primeiro login → informações adicionais. E o cadastro sem SMS confirmado é recusado |
+
+## 🚀 Rodando
+
+Só precisa de **Docker**.
 
 ```bash
-cp .env.example .env
-docker compose run --rm --build tests
+cp .env.example .env                    # 1. endereços e usuário de teste
+docker compose run --rm --build tests   # 2. roda tudo
 ```
 
-- The services do **not** start here; they must already be up. For the local wallet, see [docs/wallet.md](docs/wallet.md#running-it-locally). A service on your machine is `host.docker.internal`, not `localhost`.
-- `--build` only when `package.json` changes: the project is mounted, so editing a test is enough.
-- Report: `playwright-report/index.html`. Failures: `test-results/` (screenshots, videos, `error-context.md`, `trace.zip`).
-- Without Docker: `nvm use && npm install && npx playwright install --with-deps chromium && npm test`.
+Os serviços **não** sobem aqui: eles já precisam estar no ar. Para subir a wallet na sua máquina, veja [docs/wallet.md](docs/wallet.md#running-it-locally).
 
-| Variable | What it is |
+> [!TIP]
+> - **Um arquivo só:** `docker compose run --rm tests npx playwright test tests/app/login.spec.ts`
+> - **Relatório:** abra `playwright-report/index.html` no navegador.
+> - **Falhou?** Comece por `test-results/<teste>/error-context.md`.
+> - O `--build` só é necessário quando o `package.json` muda.
+
+### Variáveis (`.env`)
+
+| Variável | O que é |
 |---|---|
-| `WALLET_API_URL` | Wallet API |
-| `WALLET_DB_URL` | Wallet database, to read SMS and e-mail codes |
-| `WALLET_USERNAME`, `WALLET_PASSWORD`, `WALLET_DEVICE_ID` | An existing user with a registered device (locally, from the wallet fixtures) |
+| `WALLET_API_URL` | Endereço da API da wallet |
+| `WALLET_DB_URL` | Banco da wallet, para ler os códigos de SMS e e-mail |
+| `WALLET_USERNAME` · `WALLET_PASSWORD` · `WALLET_DEVICE_ID` | Um usuário que já existe, com um dispositivo cadastrado |
 
-`.env.example` has the local values. A missing variable fails only the tests that use it. Values with `$` go between single quotes.
+O `.env.example` já vem com os valores da wallet local. Um serviço rodando na sua máquina é `host.docker.internal`, não `localhost`. Se faltar uma variável, só os testes que dependem dela falham, com uma mensagem dizendo qual é.
 
-**Configuration worth knowing** (`playwright.config.ts`): no `baseURL` (a journey crosses several services); an `api` project (tests tagged `@api`, no browser, `User-Agent: curupira-e2e`) and a `web` project (Desktop Chrome); locale `pt-BR` and timezone `America/Sao_Paulo` fixed; on CI, 1 retry (shown as *flaky*), 2 workers and no `test.only`. The Playwright version in `package.json`, `Dockerfile` and the workflow must match.
+## ✍️ Vai escrever um teste?
 
-## CI (GitHub Actions)
+Siga o [**passo a passo**](WRITING-A-TEST.md) (em inglês, como todo o resto do código). Em resumo:
 
-`.github/workflows/e2e.yml` runs after every staging deploy (the application repo sends `deploy-staging`) or by hand ("Run workflow"), one run at a time. It type-checks, lints, runs the tests and keeps the `playwright-report` artifact for 7 days (traces contain the test password). It blocks nothing; failures show in the Actions tab.
+1. Escreva o cenário em palavras e faça na mão primeiro.
+2. Copie um modelo de [`examples/`](examples/) para `tests/<produto>/`.
+3. Escreva os passos como `test.step`, depois preencha.
+4. **Faça o teste falhar de propósito.** Se ele não falha, não testa nada.
 
-⚠️ **Not ready for staging yet:** see [PLAN.md](PLAN.md#before-the-first-staging-run).
+## 🗺️ Onde está cada coisa
 
-- **Variables:** `WALLET_API_URL`, `WALLET_USERNAME`, `WALLET_DEVICE_ID`. **Secrets:** `WALLET_PASSWORD`, `WALLET_DB_URL`.
-- **Daily run:** add `schedule: [{ cron: '0 9 * * *' }]` (6am Brasília) to `on:`.
-- **Application repos:** add the step in [`examples/trigger-e2e.yml`](examples/trigger-e2e.yml) right after their staging deploy, with an `E2E_DISPATCH_TOKEN` secret (a GitHub App or fine-grained token with "Contents: read and write" on this repo). It only notifies this repo; the deploy does not wait.
+| | Onde | O quê |
+|---|---|---|
+| 📘 | [WRITING-A-TEST.md](WRITING-A-TEST.md) | Como escrever um teste, e as regras |
+| 🔎 | [docs/](docs/) | O que sabemos de cada serviço: endpoints, regras, limites, bugs ([wallet](docs/wallet.md)) |
+| 🧭 | [PLAN.md](PLAN.md) | A estratégia: decisões, pré-requisitos, pendências |
+| 🧪 | `tests/<produto>/` | Os testes |
+| 🧰 | `support/` | Código compartilhado: `env()`, `newUser()`, a fixture `walletDb` |
+| 📄 | `examples/` | Modelos de teste e o passo de CI para os repos das aplicações (não rodam) |
+
+## 🔄 No CI
+
+```mermaid
+flowchart LR
+    A[Deploy de uma aplicação<br>no staging] -->|deploy-staging| B[curupira]
+    B --> C[typecheck + lint]
+    C --> D[testes]
+    D --> E{resultado}
+    E -->|✅| F[aba Actions]
+    E -->|❌| G[aba Actions<br>+ relatório por 7 dias]
+```
+
+O workflow roda depois de cada deploy no staging (o repo da aplicação envia `deploy-staging`) ou na mão, pelo botão **Run workflow**. Ele **não bloqueia** nenhum deploy.
+
+> [!WARNING]
+> **Ainda não está pronto para o staging.** Falta SMS de teste, runner interno, usuário só de leitura no banco e mais alguns itens: veja a lista em [PLAN.md](PLAN.md#before-the-first-staging-run).
+
+<details>
+<summary><b>Configurar o CI</b></summary>
+
+<br>
+
+Em **Settings → Secrets and variables → Actions**:
+
+- **Variables:** `WALLET_API_URL`, `WALLET_USERNAME`, `WALLET_DEVICE_ID`
+- **Secrets:** `WALLET_PASSWORD`, `WALLET_DB_URL`
+
+**Rodar todo dia às 6h:** adicione em `on:` no workflow:
+
+```yaml
+  schedule:
+    - cron: '0 9 * * *'
+```
+
+**Nos repos das aplicações:** adicione o passo de [`examples/trigger-e2e.yml`](examples/trigger-e2e.yml) logo depois do deploy no staging, com o secret `E2E_DISPATCH_TOKEN` (um GitHub App ou token com "Contents: read and write" neste repo). Ele só avisa este repo; o deploy não espera os testes.
+
+</details>
+
+<details>
+<summary><b>Configuração do Playwright</b></summary>
+
+<br>
+
+- **Sem `baseURL`:** uma jornada passa por vários serviços, então cada teste monta os endereços a partir das variáveis.
+- **Dois projetos:** `api` (testes com a tag `@api`, sem navegador, `User-Agent: curupira-e2e`) e `web` (Chrome).
+- **Idioma e fuso fixos** (`pt-BR`, `America/Sao_Paulo`): o container vem em inglês/UTC.
+- **No CI:** 1 nova tentativa (o teste aparece como *flaky*), 2 workers, e um `test.only` esquecido falha a execução.
+- **Versão do Playwright:** a mesma no `package.json`, no `Dockerfile` e no workflow. Atualize as três juntas.
+- **Sem Docker:** `nvm use && npm install && npx playwright install --with-deps chromium && npm test`.
+
+</details>

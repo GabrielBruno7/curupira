@@ -3,7 +3,7 @@
 End-to-end tests with Playwright (TypeScript). This repo **only tests**: each service lives in its own repo and is reached through one URL per service (`WALLET_API_URL`, …). See [README.md](README.md).
 
 - **Never point the tests at an environment with real data.** Staging sends **real SMS and e-mails**.
-- **Everything in English** (code, tests, docs, commits), except the text the app returns, which is asserted as is.
+- **Everything in English** (code, tests, docs, commits), except the README (pt-BR, for the team) and the text the app returns, which is asserted as is.
 - **Before writing or changing a test**, follow [WRITING-A-TEST.md](WRITING-A-TEST.md) entirely, including its style rules and step 5 (make it fail on purpose), and read the service's file in `docs/`. Add what you learn about a service to that file.
 - **No new abstractions** (Page Objects, new support code) without asking.
 
