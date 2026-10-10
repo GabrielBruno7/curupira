@@ -5,6 +5,7 @@ import { env } from './env';
 type WalletDb = {
   smsCode(cellphone: string): Promise<string>;
   emailCode(email: string): Promise<string>;
+  rows(sql: string, params: unknown[]): Promise<RowDataPacket[]>;
 };
 
 async function readCode(db: Connection, sql: string, key: string): Promise<string> {
@@ -18,11 +19,16 @@ async function readCode(db: Connection, sql: string, key: string): Promise<strin
 export const test = base.extend<object, { walletDb: WalletDb }>({
   walletDb: [
     async ({}, use) => {
-      const db = await mysql.createConnection(env('WALLET_DB_URL'));
+      const db = await mysql.createConnection({
+        uri: env('WALLET_DB_URL'),
+        decimalNumbers: true,
+        dateStrings: true,
+      });
 
       await use({
         smsCode: (cellphone) => readCode(db, 'SELECT codigo FROM celular WHERE numero = ?', cellphone),
         emailCode: (email) => readCode(db, 'SELECT codigo FROM confirmacao_email WHERE email = ?', email),
+        rows: async (sql, params) => (await db.query<RowDataPacket[]>(sql, params))[0],
       });
 
       await db.end();

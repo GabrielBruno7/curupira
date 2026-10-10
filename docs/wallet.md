@@ -34,6 +34,37 @@ Staging runs with `yiiEnv = test` (`buildspec-staging.yml`), so SMS goes through
 | Profile | `GET /usuario` (Bearer) | `completar_cadastro` says whether the app asks for the additional information |
 | Additional information | `POST /cadastro/usuario/informacoes-adicionais` (Bearer) | CEP, state and city should match (`estado.id_estado`, `cidade.id_cidade`) |
 
+## Consignado (payroll loan)
+
+The private-sector consignado ("Crédito do Trabalhador", via Dataprev) is **not** created by the app. **Hermes** (`emcash-team/hermes`, Go; locally `~/emcash/repos/hermes`) talks to the borrower over WhatsApp (Blip) and to Dataprev (margin, employment bond, endorsement) and Clicksign, then calls the wallet server to server (`hermes/internal/adapters/wallet/Endpoints.go`). The tests pretend to be Hermes.
+
+- The `/consignado/*` routes have **no authentication** (`TokenFilter` skips them) and exist when `CONSIGNADO_SYSTEM_ENV`, `YII_ENV_TEST` or `YII_ENV_DEV` is set, so locally and on staging. `/controle/consignado/emprestimo` is an alias.
+- Hermes calls them in this order: `GET /consignado/emprestimo/simular` → `POST /consignado/emprestimo` → `PATCH .../documentos` (signed CCB, selfie) → `PATCH .../mercado-investimento` (grant and PIX) → `PATCH .../cancelar` if the endorsement fails.
+
+| Step | Endpoint | Notes |
+|---|---|---|
+| Simulate | `GET /consignado/emprestimo/simular?valor=&prazo=&seguro=&taxa_juros=` | Same calculation as the creation, without saving |
+| Create | `POST /consignado/emprestimo` | `tomador_*` fields plus `emprestimo_valor_liberado`, `emprestimo_quantidade_parcelas`, `emprestimo_seguro`, `emprestimo_numero_proposta_dataprev` (becomes `numero_proposta_externo`) and `taxa_juros` (monthly, overrides the loan group's). Dates come back as `ddmmyyyy`. The response has **no loan id**: find it by CPF + `numero_proposta_externo` |
+| Cancel | `PATCH /consignado/emprestimo/cancelar` | `tomador_cpf`, `numero_proposta_externo`. Only from `compromisso_pendente`; it also deactivates the borrower's loan group link |
+
+What the creation does, in one transaction:
+- creates or updates the borrower by CPF: `tipo='tomador'`, `ativo`, `finalizado`, `fluxo_cadastro='novo_consignado'`, no prior registration needed;
+- links them to the "Novo Consignado" loan group (`50d93655-fcac-4336-bbd5-89015f04ef7f`, from the seed: R$ 2,000 to 30,000, 3 to 60 installments, due day 25, cut-off day 21);
+- creates `emprestimo` (`modalidade='consignado'`, `status='compromisso_pendente'`) and its `emprestimo_parcela` rows, and writes the CCB PDF (to `/opt/docs/` in dev, the S3 test bucket on staging);
+- sends **no** SMS, e-mail or push and calls no partner. Those happen only at the grant (`mercado-investimento`: Bankly PIX, Sendgrid, Zenvia, IBGE).
+
+The calculation (`Loan::calculate()`) depends on today's date and the holiday calendar (grant in 3 business days, first due date on the 25th two or three months later), so tests check it with a tolerance instead of fixed values:
+- `valor_investimento` = released value + IOF (insurance is always 0, even with `emprestimo_seguro=true`);
+- `valor_parcela` = Price over `valor_investimento × (1+i)^((carencia − 30)/30)`;
+- `valor_financiado` is the **sum of the installments**, not the financed principal;
+- each installment's `valor_principal` is its present value, so they add up to `valor_investimento`;
+- installments always fall on the 25th, even on weekends and holidays. Only `emprestimo.ultimo_vencimento` moves to the next business day (`2028-11-25` → `2028-11-27`).
+
+Rejections:
+- a second proposal for a CPF whose first one is still active: 400, `code 4457` "Usuário vinculado a mais de um grupo de empréstimo ativo" (the linked loan group check fires before the "loan in progress" one);
+- installments out of range: `4070` "Quantidade de parcelas menor que o mínimo" / `4071` "... maior que o máximo";
+- `tomador_cidade` must match a `cidade.nome` exactly.
+
 ## Rules that bite
 
 - **Names** accept letters only (no digits, so no "E2E").

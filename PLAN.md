@@ -38,7 +38,7 @@ Catch **regressions** (things that used to work and stopped) in the products' **
 | **Folder organization: open, QA decides.** Current: one folder per product the user sees (`tests/app/`). The senior QA review recommends layer first, then product or journey, with service ownership in tags: `tests/api/…`, `tests/web/…`, `tests/journeys/btg-proposal.spec.ts`, `@wallet` | Layers map to Playwright projects (`api` without a browser, `web` with one); cross-service journeys get a neutral home; tags give triage ownership without moving files; `tests/app/` gets ambiguous once Maestro tests the Flutter app |
 | **API tests for the mobile app**, tagged `@api`, in an `api` project with `User-Agent: curupira-e2e` | The Flutter app cannot be driven by Playwright; its API is where the rules live. The user agent separates the tests in the services' logs and rate limits |
 | **Small `support/` folder** (env reader, data generators, fixtures); no Page Objects | Without it, the env checks, the CPF generator and the OTP query would be copied into every journey that creates a user |
-| **Comments only say *why***; steps are named `test.step`s | Step names already say what the code does and show up in reports; the *why* (a magic value, a simulated partner) has nowhere else to live |
+| **No comments**; steps are named `test.step`s | Step names say what the code does and show up in reports; the *why* (a magic value, a simulated partner) lives in `docs/<service>.md`, where the whole team finds it |
 | **Type check and lint on CI** (`eslint-plugin-playwright`) | A missing `await` on an `expect` passes silently otherwise |
 | Every deploy runs **the whole suite** | It is simple and works while the suite is small. Filter by tags only when it goes past ~10 minutes |
 | Everything in the repo is in **English** | Same convention as the wallet repo |
@@ -61,7 +61,7 @@ Catch **regressions** (things that used to work and stopped) in the products' **
 | **E-mails on `@emcash.test`** (reserved TLD) | Staging really sends e-mails; nobody may receive them |
 | "Same CPF, second proposal" is **a scenario inside one test**, not inherited state | The test stays independent: it creates proposal 1, creates proposal 2 and checks the rule |
 | The **OTP is read from MySQL** with the default credential, stored only in a GitHub secret | To avoid blocking the start of the project. **Later:** an `e2e_readonly` user with `SELECT` only and, as a goal, a fixed OTP on staging for test phones (no real SMS) |
-| **Third parties are simulated** through the endpoints that already exist (e.g. eligibility webhook) | The suite tests **our** system and does not depend on the partner's sandbox being up. Every simulation carries the comment `// here we pretend to be <partner>` |
+| **Third parties are simulated** through the endpoints that already exist (e.g. eligibility webhook) | The suite tests **our** system and does not depend on the partner's sandbox being up. Each simulation is named in its `test.step` (e.g. "Hermes creates the proposal") and described in `docs/<service>.md` |
 
 ### Trigger
 
@@ -127,6 +127,7 @@ The suite must not run against staging until all of these are done:
 - [ ] **Wait for `/version`** in the workflow before the tests (dependency 1). Until then, results are only indicative: the suite may test the previous build.
 - [ ] **Rate limit allowance** for `curupira-e2e` (dependency 7). The wallet counter never resets while requests keep coming from the same IP.
 - [ ] **Repo in the Emcash org** (dependency 9), private.
+- [ ] **Consignado proposal test** (`tests/consignado/create-proposal.spec.ts`): the reserved CPF range below, since the wallet creates an active borrower with a random valid CPF. Every run also writes a CCB PDF to the S3 test bucket; the test cancels its proposal, so the database stays clean.
 - [ ] **Staging test user** in `WALLET_USERNAME`/`WALLET_PASSWORD`/`WALLET_DEVICE_ID` (dependency 5), with a password that is worthless outside staging: traces store it.
 
 ## Open items
@@ -143,6 +144,8 @@ The suite must not run against staging until all of these are done:
 - [ ] **Slack notifications** on failure and on flaky results, and somewhere to store the JUnit results across runs, so the v2 criterion ("< 2% flaky over 4 weeks") can be measured.
 - [ ] Ask the app team whether the Flutter app sends a null push token when notifications are denied (if so, the bug above hits real users).
 - [ ] **QA:** decide the folder organization before the BTG journey test (see the decision above and the review's recommendation).
+- [ ] Grow the consignado test into the full journey: from Hermes (Blip `payroll-loans/process`, Dataprev and Clicksign simulated) up to the investment and grant (`mercado-investimento`). Today it only calls the wallet's create route, pretending to be Hermes (see [docs/wallet.md](docs/wallet.md#consignado-payroll-loan)).
+- [ ] The read-only database user also needs `SELECT` on `usuario`, `vinculado_grupo_emprestimo`, `emprestimo` and `emprestimo_parcela` for the consignado test.
 - [ ] Get `WALLET_DB_URL` for staging (read-only user) so the registration test can read the SMS and e-mail codes on CI.
 
 ## Discarded

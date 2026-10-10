@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$(readlink -f "$0")")"
+
+UI_PORT=8090
+REPORT_PORT=9323
+IMAGE=curupira-tests
+
+say() { printf '   %s\n' "$*"; }
+
+open_when_ready() {
+  local url=$1 tries=${2:-120}
+
+  (
+    for _ in $(seq 1 "$tries"); do
+      if curl -s -o /dev/null "$url"; then
+        if command -v wslview >/dev/null; then
+          wslview "$url"
+        elif command -v explorer.exe >/dev/null; then
+          explorer.exe "$url" || true
+        elif command -v xdg-open >/dev/null; then
+          xdg-open "$url"
+        elif command -v open >/dev/null; then
+          open "$url"
+        fi
+        exit 0
+      fi
+      sleep 1
+    done
+  ) >/dev/null 2>&1 &
+  echo $!
+}
+
+prepare() {
+  if ! command -v docker >/dev/null; then
+    say "Docker is not installed: https://docs.docker.com/get-docker/"
+    exit 1
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    say "Docker is not running. Start it and try again."
+    exit 1
+  fi
+
+  if [[ ! -f .env ]]; then
+    cp .env.example .env
+    say "Created .env from .env.example (the local wallet's values)."
+  fi
+
+  local built
+  built=$(docker image inspect -f '{{.Created}}' "$IMAGE" 2>/dev/null || true)
+
+  if [[ -z $built ]]; then
+    say "First run: building the test image (a few minutes)..."
+    docker compose build tests
+  elif [[ $(date -r package-lock.json +%s) -gt $(date -d "$built" +%s) || $(date -r Dockerfile +%s) -gt $(date -d "$built" +%s) ]]; then
+    say "Dependencies changed: rebuilding the test image..."
+    docker compose build tests
+  fi
+}
+
+usage() {
+  cat <<EOF
+Usage: curupira <command>
+
+  start          pick and run tests in the terminal
+  start ui       open the visual test runner (Playwright UI mode) at http://localhost:$UI_PORT
+  run [file...]  run the tests in the terminal (all, or only the given files)
+  check          type check and lint, like CI does first
+  report         open the report of the last run at http://localhost:$REPORT_PORT
+  install        let you type \`curupira\` instead of \`./curupira\`
+
+The services under test must already be up (see docs/).
+EOF
+}
+
+case "${1:-}" in
+  start)
+    prepare
+
+    if [[ ${2:-} == ui ]]; then
+      say "Opening http://localhost:$UI_PORT (Ctrl+C to stop)"
+      open_when_ready "http://localhost:$UI_PORT" >/dev/null
+      docker compose run --rm -p "$UI_PORT:$UI_PORT" tests \
+        npx playwright test --ui-host=0.0.0.0 --ui-port="$UI_PORT"
+    else
+      opener=$(open_when_ready "http://localhost:$REPORT_PORT" 3600)
+      trap 'kill "$opener" 2>/dev/null || true' EXIT
+      docker compose run --rm -p "$REPORT_PORT:$REPORT_PORT" tests node cli/start.ts
+    fi
+    ;;
+  ui)
+    exec "$0" start ui
+    ;;
+  run)
+    shift
+    prepare
+    docker compose run --rm tests npx playwright test "$@"
+    ;;
+  check)
+    prepare
+    docker compose run --rm tests sh -c 'npm run typecheck && npm run lint'
+    ;;
+  report)
+    prepare
+    say "Opening http://localhost:$REPORT_PORT (Ctrl+C to stop)"
+    open_when_ready "http://localhost:$REPORT_PORT" >/dev/null
+    docker compose run --rm -p "$REPORT_PORT:$REPORT_PORT" tests \
+      npx playwright show-report --host=0.0.0.0 --port="$REPORT_PORT"
+    ;;
+  install)
+    mkdir -p "$HOME/.local/bin"
+    ln -sf "$PWD/curupira" "$HOME/.local/bin/curupira"
+    say "Linked ~/.local/bin/curupira."
+    if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
+      say "Add ~/.local/bin to your PATH: echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc (or ~/.bashrc)"
+    fi
+    ;;
+  *)
+    usage
+    ;;
+esac

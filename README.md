@@ -31,23 +31,31 @@ Testes que usam os produtos da Emcash **como um usuário usaria**: pelo navegado
 |---|---|---|
 | 🔐 | [`tests/app/login.spec.ts`](tests/app/login.spec.ts) | Login do app com a senha certa (e o token funciona) e com a senha errada |
 | 📝 | [`tests/app/registration.spec.ts`](tests/app/registration.spec.ts) | Cadastro simplificado: SMS → e-mail → cadastro → primeiro login → informações adicionais. E o cadastro sem SMS confirmado é recusado |
+| 💰 | [`tests/consignado/create-proposal.spec.ts`](tests/consignado/create-proposal.spec.ts) | Proposta de consignado criada na wallet (fingindo ser o Hermes): tomador, proposta, cálculo e parcelas no banco. E a segunda proposta do mesmo CPF e o número de parcelas fora do limite são recusados |
 
 ## 🚀 Rodando
 
 Só precisa de **Docker**.
 
 ```bash
-cp .env.example .env                    # 1. endereços e usuário de teste
-docker compose run --rm --build tests   # 2. roda tudo
+./curupira start
 ```
 
-Os serviços **não** sobem aqui: eles já precisam estar no ar. Para subir a wallet na sua máquina, veja [docs/wallet.md](docs/wallet.md#running-it-locally).
+Na primeira vez ele cria o `.env` (com os valores da wallet local) e monta a imagem dos testes, o que leva alguns minutos. Depois mostra se os serviços estão no ar e um menu para escolher o que rodar, com cada passo na tela e um resumo no fim.
+
+| Comando | O que faz |
+|---|---|
+| `curupira start` | Menu no terminal: rodar todos os testes, uma pasta, um arquivo ou um teste só, check, ou abrir o relatório (`q` volta um nível) |
+| `curupira start ui` | Abre o **UI mode** do Playwright no navegador (http://localhost:8090): roda com um clique e mostra cada passo, com as requisições e respostas |
+| `curupira run [arquivo]` | Roda direto no terminal: tudo, ou só os arquivos indicados |
+| `curupira check` | `typecheck` + `lint`, como o CI faz primeiro |
+| `curupira report` | Abre o relatório da última execução (http://localhost:9323) |
+| `curupira install` | Para digitar `curupira` em vez de `./curupira` |
+
+Os serviços **não** sobem aqui: eles já precisam estar no ar. Para subir a wallet na sua máquina, veja [docs/wallet.md](docs/wallet.md#running-it-locally). O script só chama o `docker compose`; os comandos completos estão no [CLAUDE.md](CLAUDE.md#commands).
 
 > [!TIP]
-> - **Um arquivo só:** `docker compose run --rm tests npx playwright test tests/app/login.spec.ts`
-> - **Relatório:** abra `playwright-report/index.html` no navegador.
-> - **Falhou?** Comece por `test-results/<teste>/error-context.md`.
-> - O `--build` só é necessário quando o `package.json` muda.
+> **Falhou?** Comece por `test-results/<teste>/error-context.md`.
 
 ### Variáveis (`.env`)
 
@@ -80,6 +88,7 @@ Na mão, siga o [**passo a passo**](WRITING-A-TEST.md) (em inglês, como todo o 
 | 🧭 | [PLAN.md](PLAN.md) | A estratégia: decisões, pré-requisitos, pendências |
 | 🧪 | `tests/<produto>/` | Os testes |
 | 🧰 | `support/` | Código compartilhado: `env()`, `newUser()`, a fixture `walletDb` |
+| 🔥 | `curupira`, `cli/` | O comando `curupira`: o menu e a saída bonita dos testes |
 | 📄 | `examples/` | Modelos de teste e o passo de CI para os repos das aplicações (não rodam) |
 
 ## 🔄 No CI

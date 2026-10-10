@@ -25,7 +25,6 @@ export function newUser() {
     password: 'E2e@12345',
     birthdate: '1990-01-01',
     deviceId: `e2e-device-${id}`,
-    // The part after ':' identifies the app install in the wallet, so every device needs its own.
     pushToken: `e2e:push-token-${id}`,
   };
 }

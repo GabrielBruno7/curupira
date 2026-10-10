@@ -122,7 +122,6 @@ test('simplified registration up to the additional information', { tag: '@api' }
   await test.step('send the additional information', async () => {
     const response = await request.post(`${walletApi}/cadastro/usuario/informacoes-adicionais`, {
       headers,
-      // CEP, state and city must match: Taubaté/SP, ids from the wallet's estado and cidade tables.
       data: {
         nome_mae: 'Maria Teste Automatizado',
         estado_civil: 'solteiro',

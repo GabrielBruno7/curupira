@@ -30,7 +30,7 @@ Copy [`examples/api-template.spec.ts`](examples/api-template.spec.ts) or [`examp
 **Style**
 
 - Import `test` and `expect` from `support/fixtures`. API tests carry `{ tag: '@api' }` (they run without a browser, as `User-Agent: curupira-e2e`).
-- Steps are `test.step('...')` in plain words. Comments only say *why* (a non-obvious value, a simulated partner: `// here we pretend to be <partner>`), never what.
+- Steps are `test.step('...')` in plain words. **No comments**: a non-obvious value or a simulated partner is explained in the service's `docs/` file.
 - One field per line in request bodies and expected objects; a blank line between each `expect`.
 - Read variables with `env('NAME')` inside the test, so a missing one fails only that test.
 - Type what you read from a response (`(await response.json()) as Token`).
@@ -78,7 +78,7 @@ Run it 2 or 3 times, with a pause between runs (rate limits). A flaky test is wo
 ## 7. Open the PR
 
 - [ ] It fails when the scenario breaks (step 5) and passed in more than one run (step 6).
-- [ ] The name says what it checks; code in English; comments only say *why*.
+- [ ] The name says what it checks; code in English; no comments.
 - [ ] `npm run typecheck` and `npm run lint` pass.
 - [ ] It sends SMS or e-mail? Only `@emcash.test` and agreed test cellphones. It logs in or registers? It counts toward the service's rate limit.
 

@@ -16,6 +16,8 @@ docker compose run --rm tests npx playwright test tests/<product>/<file>.spec.ts
 docker compose run --rm tests sh -c 'npm run typecheck && npm run lint'            # what CI checks first
 ```
 
+`./curupira` wraps these: `start` (terminal menu, `cli/start.ts`, with the `cli/reporter.ts` output), `start ui` (Playwright UI mode on port 8090), `run`, `check`, `report`, `install`.
+
 The services must already be up (local wallet: [docs/wallet.md](docs/wallet.md#running-it-locally)).
 
 ## When a test fails
