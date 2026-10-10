@@ -1,44 +1,57 @@
 # CLAUDE.md
 
-Testes end-to-end com o [Playwright](https://playwright.dev) (`@playwright/test`, TypeScript). Este repo **só testa**: a aplicação fica em outro repo, e os testes a acessam por uma URL (`APP_URL`, vinda do `.env` ou da variável do CI).
+End-to-end tests with [Playwright](https://playwright.dev) (`@playwright/test`, TypeScript). This repo **only tests**: each application lives in its own repo, and the tests reach it through a URL (`APP_URL`, from `.env` or the CI variable).
 
-**Nunca aponte os testes para um ambiente com dados reais:** eles criam dados. Use um ambiente de teste local ou o staging.
+**Never point the tests at an environment with real data:** they create data. Use a local test environment or staging.
 
-## Comandos
+## Language
+
+Everything in this repo is in **English**: code, comments, test names, docs, file names and commit messages. The only exception is the text the app itself shows or returns (e.g. `'Usuário ou senha incorretos'`): it is asserted exactly as the app produces it.
+
+## Commands
 
 ```bash
-docker compose run --rm --build tests                                       # roda tudo contra o APP_URL
-docker compose run --rm tests npx playwright test tests/<arquivo>.spec.ts   # um teste só
+docker compose run --rm --build tests                                       # runs everything against APP_URL
+docker compose run --rm tests npx playwright test tests/<product>/<file>.spec.ts   # a single file
 ```
 
-Rode pelo Docker: a imagem oficial do Playwright já traz o Node 24 e o Chromium. O `--build` só é necessário quando o `package.json` muda. O app **não** sobe aqui: ele precisa estar no ar antes. Rodando na máquina, use `host.docker.internal` no lugar de `localhost` no `APP_URL`.
+Run through Docker: the official Playwright image already has Node 24 and Chromium. `--build` is only needed when `package.json` changes. The app does **not** start here: it must already be up. If it runs on your machine, use `host.docker.internal` instead of `localhost` in `APP_URL`.
 
-## Criar ou alterar um teste
+## Layout
 
-- Siga **todos** os passos de [COMO-CRIAR-UM-TESTE.md](COMO-CRIAR-UM-TESTE.md), inclusive o 5 (fazer o teste falhar de propósito). Um teste só está pronto depois disso.
-- Respeite [BOAS-PRATICAS.md](BOAS-PRATICAS.md).
-- Parta de [`exemplos/modelo.spec.ts`](exemplos/modelo.spec.ts): um teste legível de cima a baixo, com os passos em comentários. Não crie abstrações (Page Objects, helpers) sem pedir.
+- `tests/<product>/` — one folder per product (`tests/wallet/`, …).
+- `examples/` — the test template and the CI trigger step for application repos. Not run.
 
-## Armadilhas da ferramenta
+## Creating or changing a test
 
-- **Idioma e fuso** estão fixos no `playwright.config.ts` (`pt-BR`, `America/Sao_Paulo`). Não remova: o container vem em inglês/UTC.
-- **O texto é comparado por pedaço, sem diferenciar maiúsculas:** `getByLabel('Senha')` também acha "Confirmar senha". Use `{ exact: true }` quando precisar do texto inteiro.
-- **Uma busca precisa achar exatamente um elemento.** Se achar dois (`strict mode violation`), restrinja a busca a uma região, em vez de usar `.first()`.
-- **Versão do Playwright:** a do `package.json`, a do `Dockerfile` e a do workflow do CI precisam ser a mesma.
-- **Dados únicos:** e-mails e outros valores que não podem se repetir levam `Date.now()`, com prefixo `e2e`.
-- **Nunca use `sleep` nem `waitForTimeout`:** ações e `expect` já esperam sozinhos.
+- Follow **every** step in [WRITING-A-TEST.md](WRITING-A-TEST.md), including step 5 (make the test fail on purpose). A test is only done after that.
+- Respect [BEST-PRACTICES.md](BEST-PRACTICES.md).
+- Start from [`examples/template.spec.ts`](examples/template.spec.ts): one test readable top to bottom, with the steps as comments. Do not create abstractions (Page Objects, helpers) without asking.
 
-## Armadilhas do app testado
+## Tool pitfalls
 
-<!-- Preencha ao começar a testar o app: limites de login/SMS/API (e a mensagem que
-     aparece quando estouram), elementos difíceis de clicar, telas que abrem sozinhas etc. -->
+- **Locale and timezone** are fixed in `playwright.config.ts` (`pt-BR`, `America/Sao_Paulo`). Do not remove them: the container defaults to English/UTC.
+- **Text matches by substring, case-insensitive:** `getByLabel('Senha')` also finds "Confirmar senha". Use `{ exact: true }` when you need the whole text.
+- **A locator must match exactly one element.** If it matches two (`strict mode violation`), narrow it to a region instead of using `.first()`.
+- **Playwright version:** the one in `package.json`, the `Dockerfile` and the CI workflow must be the same.
+- **Unique data:** e-mails and other values that cannot repeat use `Date.now()`, with an `e2e` prefix.
+- **Never use `sleep` or `waitForTimeout`:** actions and `expect` already wait on their own.
 
-Ainda nenhuma registrada.
+## Known app pitfalls
 
-## Quando um teste falha
+### Wallet (`wallet.em.cash`, PHP/Yii2 API)
 
-Leia `test-results/<teste>/error-context.md` **antes** de mexer no teste: ele mostra o erro e o que estava na tela no momento da falha. O passo a passo completo fica no `trace.zip`, na mesma pasta. Classifique a falha:
+- **Running locally:** `emcash_api` on port 80 and `emcash_db`, from the emcash CLI (`~/emcash`). The database is filled by `./refresh-db.sh` in the wallet repo, which **drops and recreates** `dbapp`.
+- **Login is `POST /v3/login`** with `usuario` (CPF), `senha`, `identificador` (device) and `token` (push). `/login` and `/v2/login` are disabled and always answer "atualize o app".
+- **Always send a push token.** Bug found on 2026-10-10: logging in **without** a token on a device whose last login also had no token returns **500** ("No device identifier ... was updated"). This is an app bug, not a test problem.
+- **Unknown device** gets no token: the wallet answers **202** and asks for a PIN.
+- **Fixture users** (e.g. `89524508095` / `A234$6` / `dispositivo_1`) only exist in the local database, never on staging.
+- **Rate limit** per IP + user agent: 1500 requests/day in dev, 500 elsewhere. `127.0.0.1` is exempt, so a `curl` on the host behaves differently from the test container.
 
-- **a app quebrou**: relate ao usuário, não mude o teste para passar;
-- **a app mudou de propósito**: atualize o teste;
-- **ambiente ou limite**: não mexa no teste.
+## When a test fails
+
+Read `test-results/<test>/error-context.md` **before** touching the test: it shows the error and, for UI tests, what was on screen. The full step-by-step is in `trace.zip`, in the same folder. Classify the failure:
+
+- **the app broke**: report it to the user, do not change the test to make it pass;
+- **the app changed on purpose**: update the test;
+- **environment or limit**: do not touch the test.

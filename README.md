@@ -1,51 +1,64 @@
 # curupira
 
-Testes end-to-end feitos com o [Playwright](https://playwright.dev).
-Eles usam o app como um usuário usaria: abrem o navegador num endereço e clicam.
+End-to-end tests built with [Playwright](https://playwright.dev).
+They use each app the way a user would: through the browser or through the same API the app calls.
 
-> **Vai escrever ou alterar um teste?** Siga o passo a passo em [como criar um teste](COMO-CRIAR-UM-TESTE.md) e leia as [boas práticas](BOAS-PRATICAS.md), principalmente a parte de **rate limits**.
+> **About to write or change a test?** Follow the step by step in [writing a test](WRITING-A-TEST.md) and read the [best practices](BEST-PRACTICES.md), especially the part about **rate limits**.
 
-## Como funciona
+## How it works
 
-1. `playwright.config.ts` diz **onde** está o app (`APP_URL`, vinda do `.env`).
-2. Cada arquivo em `tests/` que termina em `.spec.ts` é um conjunto de testes. Para começar, copie [`exemplos/modelo.spec.ts`](exemplos/modelo.spec.ts).
-3. Cada teste faz sempre o mesmo: **abre** o app, **age** (preenche, clica) e **confere** (`expect`).
-4. Depois de rodar, o relatório fica em `playwright-report/`, e os prints, vídeos e traces de cada falha em `test-results/`.
+1. `playwright.config.ts` says **where** the app is (`APP_URL`, from `.env`).
+2. Each file in `tests/<product>/` ending in `.spec.ts` is a set of tests. To start a new one, copy [`examples/template.spec.ts`](examples/template.spec.ts).
+3. Every test does the same: **opens** the app, **acts** (fills, clicks, calls) and **checks** (`expect`).
+4. After a run, the report is in `playwright-report/`, and the screenshots, videos and traces of each failure in `test-results/`.
 
-## Rodando (só precisa de Docker)
+## Running (you only need Docker)
 
 ```bash
-cp .env.example .env                    # e ajuste o APP_URL
-docker compose run --rm --build tests   # roda os testes
+cp .env.example .env                    # and adjust it
+docker compose run --rm --build tests   # runs the tests
 ```
 
-- O app **não** sobe aqui: ele precisa estar no ar antes (na sua máquina ou num ambiente de teste).
-- App na sua máquina? No `APP_URL`, use `host.docker.internal` no lugar de `localhost`.
-- `--build` só é necessário na primeira vez ou quando o `package.json` mudar.
-  O projeto é montado no container, então editar um teste e rodar de novo já basta.
-- Abra `playwright-report/index.html` no navegador para ver o relatório. Para ver o passo a passo de uma falha, use `npx playwright show-trace test-results/<teste>/trace.zip` ou arraste o arquivo para [trace.playwright.dev](https://trace.playwright.dev).
+- The app does **not** start here: it must already be up (on your machine or in a test environment).
+- App on your machine? In `APP_URL`, use `host.docker.internal` instead of `localhost`.
+- `--build` is only needed the first time or when `package.json` changes.
+  The project is mounted into the container, so editing a test and running again is enough.
+- Open `playwright-report/index.html` in the browser to see the report. To step through a failure, use `npx playwright show-trace test-results/<test>/trace.zip` or drop the file on [trace.playwright.dev](https://trace.playwright.dev).
 
-Sem Docker: `nvm use && npm install && npx playwright install --with-deps chromium` e `npm test`.
+Without Docker: `nvm use && npm install && npx playwright install --with-deps chromium` and `npm test`.
 
-## No CI (GitHub Actions)
+### Wallet locally
 
-Os testes rodam contra o **staging**, depois do deploy, e **não bloqueiam** nada:
+The `tests/wallet/` tests run against the local wallet from the emcash CLI (`~/emcash`):
+
+```bash
+cd ~/emcash
+docker start emcash_db
+docker compose -f docker-compose.dist.yml up -d --no-deps api   # emcash_api on port 80
+cd repos/wallet.em.cash && ./refresh-db.sh                      # first time only: DROPS and recreates dbapp
+```
+
+The `.env.example` values already point at it, with a user from the wallet fixtures.
+
+## On CI (GitHub Actions)
+
+The tests run against **staging**, after the deploy, and **block** nothing:
 
 ```
-deploy da aplicação no staging ──▶ dispara este repo ──▶ testes ──▶ ✓ / ✗ na aba Actions
-                                                                     (o GitHub avisa por e-mail se falhar)
+application deploy to staging ──▶ triggers this repo ──▶ tests ──▶ ✓ / ✗ in the Actions tab
+                                                                    (GitHub emails if it fails)
 ```
 
-`.github/workflows/e2e.yml` roda em três situações:
+`.github/workflows/e2e.yml` runs in three situations:
 
-1. **depois de cada deploy em staging**: o repo da aplicação dispara o evento `deploy-staging`.
-   O passo que vai lá está em [`exemplos/disparar-e2e.yml`](exemplos/disparar-e2e.yml);
-2. **todo dia às 6h**;
-3. **na mão**: botão "Run workflow".
+1. **after every staging deploy**: the application repo triggers the `deploy-staging` event.
+   The step that goes there is in [`examples/trigger-e2e.yml`](examples/trigger-e2e.yml);
+2. **every day at 6am** (paused for now);
+3. **by hand**: the "Run workflow" button.
 
-Para configurar:
+To set it up:
 
-- **Neste repo**: variável `APP_URL` com o endereço do staging (precisa ser HTTPS).
-- **No repo da aplicação**: o passo de `exemplos/disparar-e2e.yml` e o secret `E2E_DISPATCH_TOKEN`.
+- **In this repo**: the `APP_URL` variable with the staging address (must be HTTPS), and a staging test user in `WALLET_USERNAME`, `WALLET_DEVICE_ID` (variables) and `WALLET_PASSWORD` (secret).
+- **In the application repo**: the step from `examples/trigger-e2e.yml` and the `E2E_DISPATCH_TOKEN` secret.
 
-Os dados criados pelos testes levam o prefixo `e2e` (ex.: e-mails `e2e+...@teste.com`). Assim é possível achá-los e apagá-los no staging.
+Data created by the tests carries the `e2e` prefix (e.g. e-mails `e2e+...@teste.com`), so it can be found and deleted on staging.

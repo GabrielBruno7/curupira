@@ -1,0 +1,54 @@
+# Best practices
+
+Read this before writing or changing a test. Every item here came from a real problem.
+
+## ⚠️ Rate limits: the app protects itself from the tests too
+
+The tests use the app like a user, but much faster and many times in a row. The app's abuse protections do not tell a test from an attack. In the proof of concept, for example, tests started failing with "Muitas tentativas" after hitting a per-IP limit on logins per minute.
+
+**Before testing an app, ask its team which limits exist** (login, sign-up, SMS/e-mail sending, external APIs) and record them here:
+
+| App | Limit | What happens | How to avoid it |
+|---|---|---|---|
+| Wallet | 1500 requests/day per IP + user agent in dev, 500 elsewhere (`127.0.0.1` exempt) | The request fails with "Max records reached" | Keep the suite small; ask for a higher limit on staging when it grows |
+
+**When adding a test:**
+
+- **Count how many logins, sign-ups or sends the suite makes.** Every new test adds more. Close to the limit, the suite starts failing on its own.
+- **A test failing because of a limit** is neither an app bug nor a test bug. Check `error-context.md` (see [When a test fails](#when-a-test-fails)).
+- **Do not run the suite many times in a row** to hunt for flakiness. Wait between runs.
+- **When the suite grows**, agree with the application team on a higher limit on staging, or an allowance for the tests' IP. Do not turn the protection off in production.
+
+## Data
+
+- **Each test creates what it needs.** Do not depend on another test having run before, or on data "that is already there".
+- **Test data always carries the `e2e` prefix** (e-mails `e2e+...@teste.com`, names `E2E ...`), so it can be found and deleted on staging.
+- **Unique values** (`Date.now()`) for anything the app requires not to repeat, and to avoid per-user limits.
+- **Credentials come from the environment** (`.env` locally, variables and secrets on CI), never hard-coded in the test.
+- **Never point the tests at an environment with real data.** They create data.
+
+## Finding elements
+
+- **Use the text the user sees**: `getByRole('button', { name: 'Entrar' })`, `getByLabel('E-mail')`. The test reads like a manual walkthrough.
+- **Text matches by substring and case-insensitive**: `getByLabel('Senha')` also finds "Confirmar senha". For the whole text, use `{ exact: true }`.
+- **A locator must find exactly one element.** Found two (`strict mode violation`)? Narrow it to a region (`page.getByRole('navigation').getByRole('link', ...)`) instead of using `.first()`.
+- **Act like the user acts.** If an element is covered by another (a styled checkbox, for example), tap where the person would, like the text next to it.
+- **Locale and timezone are fixed in `playwright.config.ts`** (`pt-BR`, `America/Sao_Paulo`). Without that, the app may open in English on CI, and "today" may be another day.
+
+## API tests
+
+- **Call the API the way the app does**: same endpoint, same fields. If the app always sends a field (like the wallet's push token), the test sends it too.
+- **Check the status and the body** the app relies on (`token_type`, `access_token`, the error `code`), not just the status.
+
+## Waiting and checking
+
+- **Never use `sleep` or `page.waitForTimeout`.** Actions and `expect` already wait on their own.
+- **Every test ends by checking something** (`expect`). A test that only clicks tests nothing.
+- **Check what should appear**, not only what should not: a `.not.toBeVisible()` with the wrong text passes without testing anything.
+
+## When a test fails
+
+1. Read the message in the terminal: it shows the line and the received value.
+2. Open `test-results/<test-name>/error-context.md`: the error and, for UI tests, what was on screen. For the full step-by-step, open the `trace.zip` in the same folder with `npx playwright show-trace` or at [trace.playwright.dev](https://trace.playwright.dev).
+3. On CI, download the `playwright-report` artifact from the run page.
+4. Before changing the test, ask whether it found a real problem. The first wallet test did: see "Known app pitfalls" in [CLAUDE.md](CLAUDE.md).

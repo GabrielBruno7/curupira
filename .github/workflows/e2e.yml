@@ -1,26 +1,27 @@
-# Roda os testes e2e contra o STAGING, que já está publicado.
-# Não bloqueia deploy: só mostra o resultado (e o GitHub avisa por e-mail quando falha).
+# Runs the e2e tests against STAGING, which is already deployed.
+# Does not block deploys: it only shows the result (and GitHub emails when it fails).
 #
-# Configuração (Settings → Secrets and variables → Actions → Variables):
-#   APP_URL = https://staging.<app>...   (precisa ser HTTPS)
+# Setup (Settings → Secrets and variables → Actions → Variables):
+#   APP_URL = https://staging.<app>...   (must be HTTPS)
+#   WALLET_USERNAME, WALLET_DEVICE_ID   (variables) and WALLET_PASSWORD (secret): a staging test user
 name: e2e
 run-name: e2e ${{ github.event.client_payload.app || github.event_name }} ${{ github.event.client_payload.version }}
 
 on:
-  # 1. Depois do deploy: o pipeline da aplicação dispara este evento
-  #    (veja exemplos/disparar-e2e.yml, que vai no repo da aplicação).
+  # 1. After a deploy: the application pipeline triggers this event
+  #    (see examples/trigger-e2e.yml, which goes in the application repo).
   repository_dispatch:
     types: [deploy-staging]
 
-  # 2. Todo dia às 6h (Brasília), para pegar problemas que não vieram de deploy.
-  #    PAUSADO até existirem o primeiro teste e a variável APP_URL: para ligar, descomente.
+  # 2. Every day at 6am (Brasília), to catch problems that did not come from a deploy.
+  #    PAUSED until the APP_URL variable and the staging test user exist: uncomment to enable.
   # schedule:
   #   - cron: '0 9 * * *'
 
-  # 3. Na mão: botão "Run workflow" na aba Actions.
+  # 3. By hand: the "Run workflow" button in the Actions tab.
   workflow_dispatch:
 
-# Uma execução por vez: dois deploys seguidos não rodam testes em paralelo no mesmo staging.
+# One run at a time: two deploys in a row do not run tests in parallel on the same staging.
 concurrency:
   group: e2e-staging
   cancel-in-progress: false
@@ -32,7 +33,7 @@ jobs:
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # A mesma imagem do Dockerfile: Node 24 e navegadores já instalados.
+    # Same image as the Dockerfile: Node 24 and browsers preinstalled.
     container:
       image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
@@ -40,12 +41,15 @@ jobs:
 
       - run: npm ci
 
-      - name: Testes
+      - name: Tests
         run: npx playwright test
         env:
           APP_URL: ${{ vars.APP_URL }}
+          WALLET_USERNAME: ${{ vars.WALLET_USERNAME }}
+          WALLET_PASSWORD: ${{ secrets.WALLET_PASSWORD }}
+          WALLET_DEVICE_ID: ${{ vars.WALLET_DEVICE_ID }}
 
-      # Relatório HTML, prints, vídeos e trace de cada teste que falhou: baixe na página da execução.
+      # HTML report, screenshots, videos and trace of each failed test: download them from the run page.
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:

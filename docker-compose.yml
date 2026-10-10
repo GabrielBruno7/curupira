@@ -1,8 +1,8 @@
-# Roda os testes num container com o Playwright (Node 24 + Chromium), contra o APP_URL do .env.
-#   docker compose run --rm --build tests   → roda os testes
+# Runs the tests in a Playwright container (Node 24 + Chromium), against the APP_URL in .env.
+#   docker compose run --rm --build tests   → runs the tests
 #
-# O app NÃO sobe aqui: ele roda à parte (na sua máquina, num compose do repo dele
-# ou no staging) e os testes o acessam pelo APP_URL.
+# The app does NOT start here: it runs separately (on your machine, in its own repo's
+# compose, or on staging) and the tests reach it through APP_URL.
 name: curupira
 
 services:
@@ -12,8 +12,8 @@ services:
       - path: .env
         required: false
     extra_hosts:
-      # host.docker.internal = a sua máquina (para testar um app rodando localmente)
+      # host.docker.internal = your machine (to test an app running locally)
       - "host.docker.internal:host-gateway"
     volumes:
-      - .:/tests              # o projeto inteiro: editar testes/config não exige rebuild
-      - /tests/node_modules   # mas as dependências vêm da imagem (Linux + Node 24)
+      - .:/tests              # the whole project: editing tests/config needs no rebuild
+      - /tests/node_modules   # but the dependencies come from the image (Linux + Node 24)

@@ -1,19 +1,19 @@
-# Imagem oficial do Playwright: Node 24 + navegadores + dependências do sistema.
-# A versão da imagem precisa ser a mesma do @playwright/test no package.json.
+# Official Playwright image: Node 24 + browsers + system dependencies.
+# The image version must match @playwright/test in package.json.
 FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
 ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /tests
 
-# Dependências primeiro: só reinstala quando o package.json muda.
+# Dependencies first: only reinstalls when package.json changes.
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
 RUN chown -R ubuntu:ubuntu /tests
 
-# Roda sem root: os arquivos gerados ficam com o seu usuário (UID 1000), não com o root.
+# Runs as non-root: generated files belong to your user (UID 1000), not to root.
 USER ubuntu
 
 CMD ["npm", "test"]

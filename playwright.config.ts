@@ -1,20 +1,20 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-// Lê o .env, se existir (o Playwright não faz isso sozinho).
+// Loads .env, if present (Playwright does not do it on its own).
 if (existsSync('.env')) process.loadEnvFile('.env');
 
 if (!process.env.APP_URL) {
-  throw new Error('Defina APP_URL (no .env ou na variável do CI) com o endereço do app a testar.');
+  throw new Error('Set APP_URL (in .env or in the CI variable) to the address of the app under test.');
 }
 
 const ci = !!process.env.CI;
 
 export default defineConfig({
   testDir: 'tests',
-  // 1 retry no CI: teste que só passa no retry aparece como "flaky", não como verde.
+  // 1 retry on CI: a test that only passes on retry shows up as "flaky", not green.
   retries: ci ? 1 : 0,
-  // Um test.only esquecido não pode passar no CI.
+  // A forgotten test.only must not pass on CI.
   forbidOnly: ci,
   reporter: [
     ['list'],
@@ -23,10 +23,10 @@ export default defineConfig({
   ],
   use: {
     baseURL: process.env.APP_URL,
-    // Idioma e fuso fixos: o container vem em inglês/UTC, e muitos apps seguem o navegador.
+    // Fixed locale and timezone: the container defaults to English/UTC, and many apps follow the browser.
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
-    // Do que falhou, guarda trace, print e vídeo (em test-results/).
+    // For failed tests, keeps trace, screenshot and video (in test-results/).
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
