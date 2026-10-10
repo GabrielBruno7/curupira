@@ -1,0 +1,18 @@
+# ESTE ARQUIVO NÃO RODA AQUI. É o passo que vai no pipeline de deploy da APLICAÇÃO
+# (ex.: .github/workflows/deploy.yml do repo da Trilha), logo DEPOIS do deploy em staging.
+#
+# Ele só avisa o repo de e2e "tem versão nova no staging" e termina na hora:
+# o deploy não espera os testes, nem falha se eles falharem.
+#
+# Precisa de um token com permissão no repo de e2e (o GITHUB_TOKEN padrão só vale
+# para o próprio repo). Crie um fine-grained token, ou um GitHub App, com
+# "Contents: read and write" no repo de e2e e salve como secret E2E_DISPATCH_TOKEN.
+
+      - name: Disparar testes e2e
+        env:
+          GH_TOKEN: ${{ secrets.E2E_DISPATCH_TOKEN }}
+        run: |
+          gh api repos/GabrielBruno7/curupira/dispatches \
+            -f event_type=deploy-staging \
+            -f "client_payload[app]=trilha" \
+            -f "client_payload[version]=${{ github.sha }}"

@@ -1,0 +1,57 @@
+# Roda os testes e2e contra o STAGING, que já está publicado.
+# Não bloqueia deploy: só mostra o resultado (e o GitHub avisa por e-mail quando falha).
+#
+# Configuração (Settings → Secrets and variables → Actions → Variables):
+#   TRILHA_URL = https://staging.trilha...   (precisa ser HTTPS)
+name: e2e
+run-name: e2e ${{ github.event.client_payload.app || github.event_name }} ${{ github.event.client_payload.version }}
+
+on:
+  # 1. Depois do deploy: o pipeline da aplicação dispara este evento
+  #    (veja exemplos/disparar-e2e.yml, que vai no repo da aplicação).
+  repository_dispatch:
+    types: [deploy-staging]
+
+  # 2. Todo dia às 6h (Brasília), para pegar problemas que não vieram de deploy.
+  schedule:
+    - cron: '0 9 * * *'
+
+  # 3. Na mão: botão "Run workflow" na aba Actions.
+  workflow_dispatch:
+
+# Uma execução por vez: dois deploys seguidos não rodam testes em paralelo no mesmo staging.
+concurrency:
+  group: e2e-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx @e2e-dev/web install chromium --with-deps
+
+      - name: Testes
+        run: npx e2e run --target web --reporter list,junit
+        env:
+          TRILHA_URL: ${{ vars.TRILHA_URL }}
+          E2E_TELEMETRY_DISABLED: "1"
+
+      # Prints, vídeos e trace de cada teste: baixe na página da execução.
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: .e2e/
