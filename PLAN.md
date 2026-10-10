@@ -133,7 +133,7 @@ The suite must not run against staging until all of these are done:
 
 - [ ] Find out which tool does the deploy today and who owns it (dependency 4).
 - [ ] Confirm that staging is only reachable from the internal network.
-- [ ] Survey the multiportal/backend limits on staging (login, SMS, external APIs) before the first test. See the rate limits section in [BEST-PRACTICES.md](BEST-PRACTICES.md).
+- [ ] Survey the multiportal/backend limits on staging (login, SMS, external APIs) before the first test, and record them in `docs/<service>.md`.
 - [ ] Create the `e2e_readonly` user in staging's MySQL.
 - [ ] Agree with the backend on a fixed OTP on staging for test phones.
 - [ ] Report the wallet bug: login without a push token returns 500 from the second time on (see [docs/wallet.md](docs/wallet.md#rules-that-bite)).
