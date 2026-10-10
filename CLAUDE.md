@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-End-to-end tests with [Playwright](https://playwright.dev) (`@playwright/test`, TypeScript). This repo **only tests**: each application lives in its own repo, and the tests reach it through a URL (`APP_URL`, from `.env` or the CI variable).
+End-to-end tests with [Playwright](https://playwright.dev) (`@playwright/test`, TypeScript). This repo **only tests**: each service lives in its own repo, and the tests reach it through one URL per service (`WALLET_API_URL`, …, from `.env` or the CI variables).
 
 **Never point the tests at an environment with real data:** they create data. Use a local test environment or staging.
 
@@ -11,15 +11,16 @@ Everything in this repo is in **English**: code, comments, test names, docs, fil
 ## Commands
 
 ```bash
-docker compose run --rm --build tests                                       # runs everything against APP_URL
+docker compose run --rm --build tests                                       # runs everything
 docker compose run --rm tests npx playwright test tests/<product>/<file>.spec.ts   # a single file
 ```
 
-Run through Docker: the official Playwright image already has Node 24 and Chromium. `--build` is only needed when `package.json` changes. The app does **not** start here: it must already be up. If it runs on your machine, use `host.docker.internal` instead of `localhost` in `APP_URL`.
+Run through Docker: the official Playwright image already has Node 24 and Chromium. `--build` is only needed when `package.json` changes. The app does **not** start here: it must already be up. If a service runs on your machine, use `host.docker.internal` instead of `localhost` in its URL.
 
 ## Layout
 
-- `tests/<product>/` — one folder per product (`tests/wallet/`, …).
+- `tests/<product>/` — one folder per **product the user sees** (`tests/app/`, `tests/multiportal/`, …), **never per repo or service**: a journey like the BTG proposal goes through several repos (front, wallet, hermes…) and belongs to the product where the user starts it.
+- Services are configuration, not folders: one `<SERVICE>_URL` variable each, and credentials named after the system that holds them (`WALLET_USERNAME`…).
 - `examples/` — the test template and the CI trigger step for application repos. Not run.
 
 ## Creating or changing a test

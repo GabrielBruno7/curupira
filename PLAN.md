@@ -34,7 +34,7 @@ Catch **regressions** (things that used to work and stopped) in the products' **
 |---|---|
 | v1 covers **one journey**: the BTG proposal in the multiportal, from simulation to approval | The path is already known (automation in encore), and it forces solving the hard problems (OTP, state, integrations) early |
 | **`@playwright/test`** (the proof of concept used `e2e`; already switched) | `e2e` is at 0.x, with telemetry on and a small community. Playwright is the market standard: trace, HTML/JUnit report, retries, sharding |
-| **One QA repo**, with **one folder per product** (`tests/wallet/`, `tests/multiportal/`…) | A journey goes through several repos (front, backend, wallet); organizing by repo leaves it nowhere to live |
+| **One QA repo**, with **one folder per product the user sees** (`tests/app/`, `tests/multiportal/`…), never per repo or service | A journey goes through several repos (front, backend, wallet); organizing by repo leaves it nowhere to live. Services are configuration: one `<SERVICE>_URL` each |
 | Every deploy runs **the whole suite** | It is simple and works while the suite is small. Filter by tags only when it goes past ~10 minutes |
 | Everything in the repo is in **English** | Same convention as the wallet repo |
 | Native app (Flutter): **Maestro**, later | Playwright only drives browsers. Maestro tests the built APK from the outside, in YAML, and reads Flutter's `Semantics` labels |

@@ -4,12 +4,10 @@ import { defineConfig, devices } from '@playwright/test';
 // Loads .env, if present (Playwright does not do it on its own).
 if (existsSync('.env')) process.loadEnvFile('.env');
 
-if (!process.env.APP_URL) {
-  throw new Error('Set APP_URL (in .env or in the CI variable) to the address of the app under test.');
-}
-
 const ci = !!process.env.CI;
 
+// No baseURL: a journey can go through several services, so each test
+// reads the URL of every service it uses from the environment (<SERVICE>_URL).
 export default defineConfig({
   testDir: 'tests',
   // 1 retry on CI: a test that only passes on retry shows up as "flaky", not green.
@@ -22,7 +20,6 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
   use: {
-    baseURL: process.env.APP_URL,
     // Fixed locale and timezone: the container defaults to English/UTC, and many apps follow the browser.
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',

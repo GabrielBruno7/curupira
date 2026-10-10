@@ -7,8 +7,8 @@ They use each app the way a user would: through the browser or through the same 
 
 ## How it works
 
-1. `playwright.config.ts` says **where** the app is (`APP_URL`, from `.env`).
-2. Each file in `tests/<product>/` ending in `.spec.ts` is a set of tests. To start a new one, copy [`examples/template.spec.ts`](examples/template.spec.ts).
+1. `.env` says **where** each service is: one `<SERVICE>_URL` per service (`WALLET_API_URL`, …).
+2. Each file in `tests/<product>/` ending in `.spec.ts` is a set of tests. The folder is the product the user sees (`app`, `multiportal`…), not the repo: one journey can go through several services. To start a new one, copy [`examples/template.spec.ts`](examples/template.spec.ts).
 3. Every test does the same: **opens** the app, **acts** (fills, clicks, calls) and **checks** (`expect`).
 4. After a run, the report is in `playwright-report/`, and the screenshots, videos and traces of each failure in `test-results/`.
 
@@ -19,8 +19,8 @@ cp .env.example .env                    # and adjust it
 docker compose run --rm --build tests   # runs the tests
 ```
 
-- The app does **not** start here: it must already be up (on your machine or in a test environment).
-- App on your machine? In `APP_URL`, use `host.docker.internal` instead of `localhost`.
+- The services do **not** start here: they must already be up (on your machine or in a test environment).
+- Service on your machine? In its URL, use `host.docker.internal` instead of `localhost`.
 - `--build` is only needed the first time or when `package.json` changes.
   The project is mounted into the container, so editing a test and running again is enough.
 - Open `playwright-report/index.html` in the browser to see the report. To step through a failure, use `npx playwright show-trace test-results/<test>/trace.zip` or drop the file on [trace.playwright.dev](https://trace.playwright.dev).
@@ -29,7 +29,7 @@ Without Docker: `nvm use && npm install && npx playwright install --with-deps ch
 
 ### Wallet locally
 
-The `tests/wallet/` tests run against the local wallet from the emcash CLI (`~/emcash`):
+The tests that use the wallet API (like `tests/app/login.spec.ts`) can run against the local wallet from the emcash CLI (`~/emcash`):
 
 ```bash
 cd ~/emcash
@@ -58,7 +58,7 @@ application deploy to staging ──▶ triggers this repo ──▶ tests ─�
 
 To set it up:
 
-- **In this repo**: the `APP_URL` variable with the staging address (must be HTTPS), and a staging test user in `WALLET_USERNAME`, `WALLET_DEVICE_ID` (variables) and `WALLET_PASSWORD` (secret).
+- **In this repo**: one `<SERVICE>_URL` variable per service with its staging address (must be HTTPS), and a staging test user in `WALLET_USERNAME`, `WALLET_DEVICE_ID` (variables) and `WALLET_PASSWORD` (secret).
 - **In the application repo**: the step from `examples/trigger-e2e.yml` and the `E2E_DISPATCH_TOKEN` secret.
 
 Data created by the tests carries the `e2e` prefix (e.g. e-mails `e2e+...@teste.com`), so it can be found and deleted on staging.

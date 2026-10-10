@@ -1,8 +1,8 @@
-# Runs the tests in a Playwright container (Node 24 + Chromium), against the APP_URL in .env.
+# Runs the tests in a Playwright container (Node 24 + Chromium), against the service URLs in .env.
 #   docker compose run --rm --build tests   → runs the tests
 #
-# The app does NOT start here: it runs separately (on your machine, in its own repo's
-# compose, or on staging) and the tests reach it through APP_URL.
+# The services do NOT start here: they run separately (on your machine, in their own
+# repo's compose, or on staging) and the tests reach them through their URLs.
 name: curupira
 
 services:

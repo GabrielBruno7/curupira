@@ -20,7 +20,7 @@ Then    the item is back in the list
 
 ## 2. Do it by hand in the test environment
 
-Open the app at the `APP_URL` address (never an environment with real data), go through the scenario and write down:
+Open the app in the test environment (never an environment with real data), go through the scenario and write down:
 
 - **the exact text** of each button, link and field;
 - **what shows up at the end**, which becomes the check;
@@ -34,7 +34,7 @@ Open the app at the `APP_URL` address (never an environment with real data), go 
 
 ## 3. Turn the steps into code
 
-Create a branch and copy [`examples/template.spec.ts`](examples/template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). Write **the steps as comments first**:
+Create a branch and copy [`examples/template.spec.ts`](examples/template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). The folder is the product where the user starts the journey, even if it goes through several services. Write **the steps as comments first**:
 
 ```ts
 import { test, expect } from '@playwright/test';

@@ -2,7 +2,7 @@
 # Does not block deploys: it only shows the result (and GitHub emails when it fails).
 #
 # Setup (Settings → Secrets and variables → Actions → Variables):
-#   APP_URL = https://staging.<app>...   (must be HTTPS)
+#   <SERVICE>_URL, one per service, e.g. WALLET_API_URL = https://<wallet staging>   (must be HTTPS)
 #   WALLET_USERNAME, WALLET_DEVICE_ID   (variables) and WALLET_PASSWORD (secret): a staging test user
 name: e2e
 run-name: e2e ${{ github.event.client_payload.app || github.event_name }} ${{ github.event.client_payload.version }}
@@ -14,7 +14,7 @@ on:
     types: [deploy-staging]
 
   # 2. Every day at 6am (Brasília), to catch problems that did not come from a deploy.
-  #    PAUSED until the APP_URL variable and the staging test user exist: uncomment to enable.
+  #    PAUSED until the URL variables and the staging test user exist: uncomment to enable.
   # schedule:
   #   - cron: '0 9 * * *'
 
@@ -44,7 +44,7 @@ jobs:
       - name: Tests
         run: npx playwright test
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          WALLET_API_URL: ${{ vars.WALLET_API_URL }}
           WALLET_USERNAME: ${{ vars.WALLET_USERNAME }}
           WALLET_PASSWORD: ${{ secrets.WALLET_PASSWORD }}
           WALLET_DEVICE_ID: ${{ vars.WALLET_DEVICE_ID }}
