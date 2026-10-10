@@ -6,6 +6,7 @@ End-to-end tests with Playwright (TypeScript). This repo **only tests**: each se
 - **Everything in English** (code, tests, docs, commits), except the README (pt-BR, for the team) and the text the app returns, which is asserted as is.
 - **Before writing or changing a test**, follow [WRITING-A-TEST.md](WRITING-A-TEST.md) entirely, including its style rules and step 5 (make it fail on purpose), and read the service's file in `docs/`. Add what you learn about a service to that file.
 - **No new abstractions** (Page Objects, new support code) without asking.
+- **New test for a journey?** Use the `write-e2e-test` skill (`.claude/skills/write-e2e-test/`): it researches the flow, interviews the user, then builds the test.
 
 ## Commands
 
