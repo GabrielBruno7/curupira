@@ -34,22 +34,25 @@ Open the app in the test environment (never an environment with real data), go t
 
 ## 3. Turn the steps into code
 
-Create a branch and copy [`examples/template.spec.ts`](examples/template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). The folder is the product where the user starts the journey, even if it goes through several services. Write **the steps as comments first**:
+Create a branch and copy [`examples/template.spec.ts`](examples/template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). For now the folder is the product where the user starts the journey, even if it goes through several services (the final organization is up to QA). Write **the steps first, as empty `test.step`s**:
 
 ```ts
 import { test, expect } from '@playwright/test';
 
 test('deleting an item and undoing it', async ({ page }) => {
-  // setup: new user with one item
-  // go to the list
-  // open the item's actions and delete it
-  // check: it is gone and "Desfazer" showed up
-  // undo
-  // check: it is back
+  await test.step('create a new user with one item', async () => {});
+
+  await test.step('delete the item', async () => {});
+
+  await test.step('the item is gone and "Desfazer" shows up', async () => {});
+
+  await test.step('undo', async () => {});
+
+  await test.step('the item is back', async () => {});
 });
 ```
 
-Then fill in each comment with what you wrote down in step 2. If another test already has the same setup (create a user, log in), copy it from there.
+Then fill in each step with what you wrote down in step 2, following the code style in [CLAUDE.md](CLAUDE.md#code-style) (no comments, one field per line). If another test already has the same setup (create a user, log in), copy it from there; [`tests/app/registration.spec.ts`](tests/app/registration.spec.ts) creates a new user from scratch.
 
 ## 4. Run just this test, and fix it
 
@@ -73,7 +76,7 @@ The third is the trickiest: the app was right, but the test was looking at the w
 
 The most forgotten step. Break the scenario on purpose and confirm the test **fails**:
 
-- comment out an essential step (the `Desfazer`, for example), or use a wrong password: the test must fail;
+- skip an essential step (the `Desfazer`, the additional information), or send a wrong code or password: the test must fail;
 - or change the expected text to a wrong one.
 
 If it still passes, the test is not testing anything. Then put it back.
@@ -94,7 +97,7 @@ docker compose run --rm tests
 - [ ] The test fails when the scenario breaks (step 5).
 - [ ] It passed in more than one run (step 6).
 - [ ] The test name says what it checks.
-- [ ] Code, comments and test names are in English.
+- [ ] Code and test names are in English, with no comments.
 
 Someone reviews the PR, like application code. After the merge, the test runs on its own on the next staging deploy.
 

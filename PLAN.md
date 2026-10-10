@@ -34,7 +34,8 @@ Catch **regressions** (things that used to work and stopped) in the products' **
 |---|---|
 | v1 covers **one journey**: the BTG proposal in the multiportal, from simulation to approval | The path is already known (automation in encore), and it forces solving the hard problems (OTP, state, integrations) early |
 | **`@playwright/test`** (the proof of concept used `e2e`; already switched) | `e2e` is at 0.x, with telemetry on and a small community. Playwright is the market standard: trace, HTML/JUnit report, retries, sharding |
-| **One QA repo**, with **one folder per product the user sees** (`tests/app/`, `tests/multiportal/`…), never per repo or service | A journey goes through several repos (front, backend, wallet); organizing by repo leaves it nowhere to live. Services are configuration: one `<SERVICE>_URL` each |
+| **One QA repo**; services are configuration (one `<SERVICE>_URL` each), not folders | A journey goes through several repos (front, backend, wallet); organizing by repo leaves it nowhere to live |
+| **Folder organization: open, QA decides.** Current suggestion: one folder per product the user sees (`tests/app/`, `tests/multiportal/`…), a journey living where the user starts it | Alternative: a folder per journey (`tests/journeys/btg-proposal.spec.ts`). See the open items |
 | Every deploy runs **the whole suite** | It is simple and works while the suite is small. Filter by tags only when it goes past ~10 minutes |
 | Everything in the repo is in **English** | Same convention as the wallet repo |
 | Native app (Flutter): **Maestro**, later | Playwright only drives browsers. Maestro tests the built APK from the outside, in YAML, and reads Flutter's `Semantics` labels |
@@ -116,6 +117,8 @@ A flaky test is worse than none: the team starts ignoring the alerts.
 - [ ] Agree with the backend on a fixed OTP on staging for test phones.
 - [ ] Report the wallet bug: login without a push token returns 500 from the second time on (see [CLAUDE.md](CLAUDE.md#known-app-pitfalls)).
 - [ ] Ask the app team whether the Flutter app sends a null push token when notifications are denied (if so, the bug above hits real users).
+- [ ] **QA:** decide the folder organization (per product, per journey, or both) before the BTG journey test.
+- [ ] Get `WALLET_DB_URL` for staging (read-only user) so the registration test can read the SMS and e-mail codes on CI.
 
 ## Discarded
 

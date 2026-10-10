@@ -22,9 +22,10 @@ The tests use the app like a user, but much faster and many times in a row. The 
 ## Data
 
 - **Each test creates what it needs.** Do not depend on another test having run before, or on data "that is already there".
-- **Test data always carries the `e2e` prefix** (e-mails `e2e+...@teste.com`, names `E2E ...`), so it can be found and deleted on staging.
+- **Test data carries the `e2e` prefix where the app allows it**, so it can be found and deleted on staging. The wallet rejects `+` in e-mails and digits in names, so use e-mails like `e2e.<id>@teste.com` and names like `Teste Automatizado ...`.
 - **Unique values** (`Date.now()`) for anything the app requires not to repeat, and to avoid per-user limits.
 - **Credentials come from the environment** (`.env` locally, variables and secrets on CI), never hard-coded in the test.
+- **Codes sent by SMS or e-mail** (OTP) are read from the service's database, never from a real phone or inbox.
 - **Never point the tests at an environment with real data.** They create data.
 
 ## Finding elements
@@ -37,8 +38,9 @@ The tests use the app like a user, but much faster and many times in a row. The 
 
 ## API tests
 
-- **Call the API the way the app does**: same endpoint, same fields. If the app always sends a field (like the wallet's push token), the test sends it too.
+- **Call the API the way the app does**: same endpoint, same fields. If the app always sends a field (like the wallet's push token), the test sends it too, with a value as unique as the real one (one push token per device).
 - **Check the status and the body** the app relies on (`token_type`, `access_token`, the error `code`), not just the status.
+- **Use `await expect(response).toBeOK()`**: when it fails, it prints the response body, which usually says exactly what is wrong.
 
 ## Waiting and checking
 
