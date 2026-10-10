@@ -2,7 +2,7 @@
 # Não bloqueia deploy: só mostra o resultado (e o GitHub avisa por e-mail quando falha).
 #
 # Configuração (Settings → Secrets and variables → Actions → Variables):
-#   TRILHA_URL = https://staging.trilha...   (precisa ser HTTPS)
+#   APP_URL = https://staging.<app>...   (precisa ser HTTPS)
 name: e2e
 run-name: e2e ${{ github.event.client_payload.app || github.event_name }} ${{ github.event.client_payload.version }}
 
@@ -13,8 +13,9 @@ on:
     types: [deploy-staging]
 
   # 2. Todo dia às 6h (Brasília), para pegar problemas que não vieram de deploy.
-  schedule:
-    - cron: '0 9 * * *'
+  #    PAUSADO até existirem o primeiro teste e a variável APP_URL: para ligar, descomente.
+  # schedule:
+  #   - cron: '0 9 * * *'
 
   # 3. Na mão: botão "Run workflow" na aba Actions.
   workflow_dispatch:
@@ -31,27 +32,24 @@ jobs:
   web:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # A mesma imagem do Dockerfile: Node 24 e navegadores já instalados.
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
       - run: npm ci
 
-      - run: npx @e2e-dev/web install chromium --with-deps
-
       - name: Testes
-        run: npx e2e run --target web --reporter list,junit
+        run: npx playwright test
         env:
-          TRILHA_URL: ${{ vars.TRILHA_URL }}
-          E2E_TELEMETRY_DISABLED: "1"
+          APP_URL: ${{ vars.APP_URL }}
 
-      # Prints, vídeos e trace de cada teste: baixe na página da execução.
+      # Relatório HTML, prints, vídeos e trace de cada teste que falhou: baixe na página da execução.
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-report
-          path: .e2e/
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/

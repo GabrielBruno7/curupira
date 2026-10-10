@@ -3,11 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "e2e run --target web"
+    "test": "playwright test"
   },
   "devDependencies": {
-    "@e2e-dev/web": "0.14.0",
-    "@types/node": "^24.0.0",
-    "e2e": "0.19.0"
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.0.0"
   }
 }

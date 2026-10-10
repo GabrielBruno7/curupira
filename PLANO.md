@@ -1,6 +1,6 @@
 # Plano: regressão e2e na Emcash
 
-Este repo é a **prova de conceito**: testa a Trilha, um app pessoal, para validar o jeito de trabalhar.
+Este repo nasceu como **prova de conceito** (testando um app pessoal, para validar o jeito de trabalhar) e agora é a base genérica para os testes da Emcash.
 Este documento diz como levar isso para a Emcash: o que já foi decidido, por quê, e o que ainda falta.
 
 > Cada decisão tem o motivo ao lado. Antes de mudar uma, leia o motivo: provavelmente já foi discutido.
@@ -33,7 +33,7 @@ Pegar **regressões** (coisas que funcionavam e pararam) nas **jornadas crítica
 | Decisão | Motivo |
 |---|---|
 | A v1 cobre **uma jornada**: proposta BTG no multiportal, da simulação à aprovação | O caminho já é conhecido (automação no encore), e ela força resolver os problemas difíceis (OTP, estado, integrações) logo no começo |
-| **`@playwright/test`**, não o `e2e` usado nesta prova de conceito | O `e2e` está em 0.x, com telemetria ligada e comunidade pequena. O Playwright é o padrão de mercado: trace, relatório HTML/JUnit, retries, sharding |
+| **`@playwright/test`** (a prova de conceito usou o `e2e`; já foi trocado) | O `e2e` está em 0.x, com telemetria ligada e comunidade pequena. O Playwright é o padrão de mercado: trace, relatório HTML/JUnit, retries, sharding |
 | **Um repo de QA**, com **pastas por produto** (`multiportal/`, `360/`…) | Uma jornada passa por vários repos (front, backend, wallet); organizar por repo não tem onde colocá-la |
 | Todo deploy roda **a suíte inteira** | É simples e funciona enquanto a suíte for pequena. Filtrar por tags só quando passar de uns 10 minutos |
 

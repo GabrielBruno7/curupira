@@ -1,50 +1,19 @@
-# Sobe uma Trilha só para testes e roda os testes contra ela.
-#   docker compose run --rm --build tests   → sobe a Trilha (se preciso) e roda os testes
-#   docker compose down                     → apaga tudo (o banco fica em memória)
+# Roda os testes num container com o Playwright (Node 24 + Chromium), contra o APP_URL do .env.
+#   docker compose run --rm --build tests   → roda os testes
 #
-# Nome próprio de propósito: "trilha" já é o projeto Docker da Trilha de verdade.
+# O app NÃO sobe aqui: ele roda à parte (na sua máquina, num compose do repo dele
+# ou no staging) e os testes o acessam pelo APP_URL.
 name: curupira
 
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: trilha
-      POSTGRES_PASSWORD: trilha
-      POSTGRES_DB: trilha
-    tmpfs: /var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trilha -d trilha"]
-      interval: 2s
-      retries: 15
-
-  app:
-    image: trilha-app
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://trilha:trilha@db:5432/trilha
-      # A Trilha só aceita requisições vindas deste endereço, por isso ele é o
-      # mesmo para o seu navegador e para o container de testes.
-      PORT: 48300
-      APP_ORIGIN: http://localhost:48300
-      COOKIE_SECURE: "false"
-      MAIL_TRANSPORT: log
-    ports:
-      - "127.0.0.1:48300:48300"
-
   tests:
     build: .
-    depends_on:
-      app:
-        condition: service_healthy
-    # Divide a rede com o app: dentro do container, localhost:48300 é a Trilha.
-    network_mode: service:app
-    environment:
-      TRILHA_URL: http://localhost:48300
-      E2E_TELEMETRY_DISABLED: "1"   # o e2e manda telemetria anônima por padrão
+    env_file:
+      - path: .env
+        required: false
+    extra_hosts:
+      # host.docker.internal = a sua máquina (para testar um app rodando localmente)
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/tests              # o projeto inteiro: editar testes/config não exige rebuild
       - /tests/node_modules   # mas as dependências vêm da imagem (Linux + Node 24)
-    profiles: [tests]          # `docker compose up` sozinho não roda os testes

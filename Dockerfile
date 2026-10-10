@@ -1,9 +1,8 @@
-# Imagem com tudo que os testes precisam: Node 24 + Chromium + dependências do sistema.
-FROM node:24-bookworm-slim
+# Imagem oficial do Playwright: Node 24 + navegadores + dependências do sistema.
+# A versão da imagem precisa ser a mesma do @playwright/test no package.json.
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
 
-# Navegador numa pasta fixa, fora do /root, para o usuário "node" achar.
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
-    NPM_CONFIG_UPDATE_NOTIFIER=false
+ENV NPM_CONFIG_UPDATE_NOTIFIER=false
 
 WORKDIR /tests
 
@@ -11,13 +10,10 @@ WORKDIR /tests
 COPY package.json package-lock.json ./
 RUN npm ci
 
-# Chromium e as bibliotecas do Linux que ele usa (precisa de root para o apt).
-RUN npx @e2e-dev/web install chromium --with-deps
-
 COPY . .
-RUN chown -R node:node /tests
+RUN chown -R ubuntu:ubuntu /tests
 
-# Roda sem root: os arquivos em .e2e/ ficam com o seu usuário (UID 1000), não com o root.
-USER node
+# Roda sem root: os arquivos gerados ficam com o seu usuário (UID 1000), não com o root.
+USER ubuntu
 
 CMD ["npm", "test"]

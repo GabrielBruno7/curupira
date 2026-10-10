@@ -1,38 +1,43 @@
 # CLAUDE.md
 
-Testes end-to-end da Trilha com o [e2e](https://e2e.tester.army) (TypeScript, Playwright por baixo). Este repo **só testa**: a aplicação fica em outro repo, e os testes a acessam por uma URL (`TRILHA_URL`).
+Testes end-to-end com o [Playwright](https://playwright.dev) (`@playwright/test`, TypeScript). Este repo **só testa**: a aplicação fica em outro repo, e os testes a acessam por uma URL (`APP_URL`, vinda do `.env` ou da variável do CI).
 
-**Nunca aponte os testes para um ambiente com dados reais:** eles criam contas. Localmente, use a Trilha de teste do `docker-compose.yml`; no CI, o staging.
+**Nunca aponte os testes para um ambiente com dados reais:** eles criam dados. Use um ambiente de teste local ou o staging.
 
 ## Comandos
 
 ```bash
-docker compose run --rm --build tests                                # sobe a Trilha de teste e roda tudo
-docker compose run --rm tests npx e2e run tests/<arquivo>.e2e.ts     # um teste só
-docker compose down                                                  # apaga a Trilha de teste
+docker compose run --rm --build tests                                       # roda tudo contra o APP_URL
+docker compose run --rm tests npx playwright test tests/<arquivo>.spec.ts   # um teste só
 ```
 
-Rode pelo Docker: o `e2e` exige Node ≥ 22.22.3 ou 24, e a imagem já traz o Node 24 e o Chromium. O `--build` só é necessário quando o `package.json` muda.
+Rode pelo Docker: a imagem oficial do Playwright já traz o Node 24 e o Chromium. O `--build` só é necessário quando o `package.json` muda. O app **não** sobe aqui: ele precisa estar no ar antes. Rodando na máquina, use `host.docker.internal` no lugar de `localhost` no `APP_URL`.
 
 ## Criar ou alterar um teste
 
 - Siga **todos** os passos de [COMO-CRIAR-UM-TESTE.md](COMO-CRIAR-UM-TESTE.md), inclusive o 5 (fazer o teste falhar de propósito). Um teste só está pronto depois disso.
 - Respeite [BOAS-PRATICAS.md](BOAS-PRATICAS.md).
-- Mantenha o estilo dos testes existentes: um teste legível de cima a baixo, com os passos em comentários. Não crie abstrações (Page Objects, helpers) sem pedir.
+- Parta de [`exemplos/modelo.spec.ts`](exemplos/modelo.spec.ts): um teste legível de cima a baixo, com os passos em comentários. Não crie abstrações (Page Objects, helpers) sem pedir.
 
-## Armadilhas já conhecidas
+## Armadilhas da ferramenta
 
-- **Rate limit:** a Trilha aceita até 20 logins/cadastros por minuto por IP, e até 5 senhas erradas por e-mail. Espere **60 s entre rodadas** da suíte. "Muitas tentativas. Aguarde um pouco e tente de novo." no trace é esse limite: **não é bug**, não "corrija" o teste por causa dele.
-- **Dados únicos:** e-mails sempre `e2e+${Date.now()}@teste.com`.
-- **URL sem `#`:** `app.url` não aceita fragmento. Para abrir uma tela, use `app.open('/#entrar')`.
-- **Idioma e fuso** estão fixos no `e2e.config.ts` (`pt-BR`, `America/Sao_Paulo`). Não remova: sem isso o app abre em inglês.
-- **O texto é comparado inteiro e exato**, e uma busca precisa achar exatamente um elemento. Se achar dois (`LOCATOR_AMBIGUOUS`), restrinja a busca a uma região, em vez de usar `.first()`.
-- **Checkbox de hábito:** toque no nome do hábito, não no checkbox (ele fica coberto por um elemento decorativo).
-- **Nunca use `sleep`:** ações e `expect` já esperam sozinhos.
+- **Idioma e fuso** estão fixos no `playwright.config.ts` (`pt-BR`, `America/Sao_Paulo`). Não remova: o container vem em inglês/UTC.
+- **O texto é comparado por pedaço, sem diferenciar maiúsculas:** `getByLabel('Senha')` também acha "Confirmar senha". Use `{ exact: true }` quando precisar do texto inteiro.
+- **Uma busca precisa achar exatamente um elemento.** Se achar dois (`strict mode violation`), restrinja a busca a uma região, em vez de usar `.first()`.
+- **Versão do Playwright:** a do `package.json`, a do `Dockerfile` e a do workflow do CI precisam ser a mesma.
+- **Dados únicos:** e-mails e outros valores que não podem se repetir levam `Date.now()`, com prefixo `e2e`.
+- **Nunca use `sleep` nem `waitForTimeout`:** ações e `expect` já esperam sozinhos.
+
+## Armadilhas do app testado
+
+<!-- Preencha ao começar a testar o app: limites de login/SMS/API (e a mensagem que
+     aparece quando estouram), elementos difíceis de clicar, telas que abrem sozinhas etc. -->
+
+Ainda nenhuma registrada.
 
 ## Quando um teste falha
 
-Leia `.e2e/results/<teste>/trace.md` **antes** de mexer no teste: ele mostra cada passo e cada texto da tela. Classifique a falha:
+Leia `test-results/<teste>/error-context.md` **antes** de mexer no teste: ele mostra o erro e o que estava na tela no momento da falha. O passo a passo completo fica no `trace.zip`, na mesma pasta. Classifique a falha:
 
 - **a app quebrou**: relate ao usuário, não mude o teste para passar;
 - **a app mudou de propósito**: atualize o teste;

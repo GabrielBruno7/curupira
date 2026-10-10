@@ -1,5 +1,5 @@
 # ESTE ARQUIVO NÃO RODA AQUI. É o passo que vai no pipeline de deploy da APLICAÇÃO
-# (ex.: .github/workflows/deploy.yml do repo da Trilha), logo DEPOIS do deploy em staging.
+# (ex.: .github/workflows/deploy.yml do repo da aplicação), logo DEPOIS do deploy em staging.
 #
 # Ele só avisa o repo de e2e "tem versão nova no staging" e termina na hora:
 # o deploy não espera os testes, nem falha se eles falharem.
@@ -14,5 +14,5 @@
         run: |
           gh api repos/GabrielBruno7/curupira/dispatches \
             -f event_type=deploy-staging \
-            -f "client_payload[app]=trilha" \
+            -f "client_payload[app]=${{ github.event.repository.name }}" \
             -f "client_payload[version]=${{ github.sha }}"
