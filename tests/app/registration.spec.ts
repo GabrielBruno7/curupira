@@ -1,54 +1,17 @@
-import { test, expect } from '@playwright/test';
-import mysql, { type Connection, type RowDataPacket } from 'mysql2/promise';
+import { test, expect } from '../../support/fixtures';
+import { env } from '../../support/env';
+import { newUser } from '../../support/data';
 
-const walletApi = process.env.WALLET_API_URL;
-const walletDb = process.env.WALLET_DB_URL;
+type Token = {
+  access_token: string;
+  token_type: string;
+};
 
-if (!walletApi || !walletDb) {
-  throw new Error('Set WALLET_API_URL and WALLET_DB_URL (see .env.example).');
-}
+test('simplified registration up to the additional information', { tag: '@api' }, async ({ request, walletDb }) => {
+  const walletApi = env('WALLET_API_URL');
+  const user = newUser();
 
-function randomCpf(): string {
-  const digits = Array.from({ length: 9 }, () => Math.floor(Math.random() * 10));
-
-  for (const length of [9, 10]) {
-    const sum = digits.reduce((total, digit, index) => total + digit * (length + 1 - index), 0);
-    const rest = (sum * 10) % 11;
-    digits.push(rest === 10 ? 0 : rest);
-  }
-
-  return digits.join('');
-}
-
-function randomCellphone(): string {
-  return '319' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
-}
-
-let db: Connection;
-
-test.beforeAll(async () => {
-  db = await mysql.createConnection(walletDb);
-});
-
-test.afterAll(async () => {
-  await db.end();
-});
-
-test('simplified registration up to the additional information', async ({ request }) => {
-  const runId = Date.now();
-
-  const user = {
-    cpf: randomCpf(),
-    name: 'Teste Automatizado Cadastro',
-    email: `e2e.${runId}@teste.com`,
-    cellphone: randomCellphone(),
-    password: 'E2e@12345',
-    birthdate: '1990-01-01',
-    deviceId: `e2e-device-${runId}`,
-    pushToken: `e2e:push-token-${runId}`,
-  };
-
-  await test.step('verify the CPF is free to register', async () => {
+  await test.step('the CPF has no pre-registration (simplified flow)', async () => {
     const response = await request.get(`${walletApi}/cadastro/usuario/verificar`, {
       params: {
         cpf: user.cpf,
@@ -71,15 +34,10 @@ test('simplified registration up to the additional information', async ({ reques
 
     await expect(sent).toBeOK();
 
-    const [rows] = await db.query<RowDataPacket[]>(
-      'SELECT codigo FROM celular WHERE numero = ?',
-      [user.cellphone],
-    );
-
     const confirmed = await request.post(`${walletApi}/usuario/sms/confirmar`, {
       data: {
         celular: user.cellphone,
-        codigo: rows[0].codigo,
+        codigo: await walletDb.smsCode(user.cellphone),
       },
     });
 
@@ -96,15 +54,10 @@ test('simplified registration up to the additional information', async ({ reques
 
     await expect(sent).toBeOK();
 
-    const [rows] = await db.query<RowDataPacket[]>(
-      'SELECT codigo FROM confirmacao_email WHERE email = ?',
-      [user.email],
-    );
-
     const confirmed = await request.post(`${walletApi}/cadastro/usuario/email/codigo/confirmar`, {
       data: {
         email: user.email,
-        codigo: rows[0].codigo,
+        codigo: await walletDb.emailCode(user.email),
       },
     });
 
@@ -125,10 +78,12 @@ test('simplified registration up to the additional information', async ({ reques
 
     await expect(response).toBeOK();
 
-    expect((await response.json()).id_usuario).toBeTruthy();
+    expect(await response.json()).toMatchObject({
+      id_usuario: expect.stringMatching(/\S+/),
+    });
   });
 
-  const accessToken = await test.step('log in on a new device', async () => {
+  const accessToken = await test.step('log in on the first device', async () => {
     const response = await request.post(`${walletApi}/v3/login`, {
       data: {
         usuario: user.cpf,
@@ -138,11 +93,16 @@ test('simplified registration up to the additional information', async ({ reques
       },
     });
 
-    await expect(response).toBeOK();
+    expect(response.status(), await response.text()).toBe(200);
 
-    expect(response.status()).toBe(200);
+    const body = (await response.json()) as Token;
 
-    return (await response.json()).access_token;
+    expect(body).toMatchObject({
+      token_type: 'Bearer',
+      access_token: expect.stringMatching(/\S+/),
+    });
+
+    return body.access_token;
   });
 
   const headers = {
@@ -162,6 +122,7 @@ test('simplified registration up to the additional information', async ({ reques
   await test.step('send the additional information', async () => {
     const response = await request.post(`${walletApi}/cadastro/usuario/informacoes-adicionais`, {
       headers,
+      // CEP, state and city must match: Taubaté/SP, ids from the wallet's estado and cidade tables.
       data: {
         nome_mae: 'Maria Teste Automatizado',
         estado_civil: 'solteiro',
@@ -169,8 +130,8 @@ test('simplified registration up to the additional information', async ({ reques
         logradouro: 'Rua Teste Automatizado',
         numero: 100,
         bairro: 'Centro',
-        id_estado: 1,
-        id_cidade: 1,
+        id_estado: 26,
+        id_cidade: 5312,
       },
     });
 
@@ -185,5 +146,27 @@ test('simplified registration up to the additional information', async ({ reques
     expect(await response.json()).toMatchObject({
       completar_cadastro: false,
     });
+  });
+});
+
+test('registration without confirming the cellphone is rejected', { tag: '@api' }, async ({ request }) => {
+  const user = newUser();
+
+  const response = await request.post(`${env('WALLET_API_URL')}/cadastro/usuario/registrar`, {
+    data: {
+      cpf: user.cpf,
+      nome: user.name,
+      email: user.email,
+      celular: user.cellphone,
+      senha: user.password,
+      data_nascimento: user.birthdate,
+    },
+  });
+
+  expect(response.status()).toBe(400);
+
+  expect(await response.json()).toMatchObject({
+    code: 4977,
+    message: 'O código de verificação do SMS ainda não foi confirmado',
   });
 });

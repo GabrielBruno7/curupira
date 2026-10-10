@@ -10,7 +10,7 @@ The tests use the app like a user, but much faster and many times in a row. The 
 
 | App | Limit | What happens | How to avoid it |
 |---|---|---|---|
-| Wallet | 1500 requests/day per IP + user agent in dev, 500 elsewhere (`127.0.0.1` exempt) | The request fails with "Max records reached" | Keep the suite small; ask for a higher limit on staging when it grows |
+| Wallet | 500 requests per IP + user agent outside dev (1500 in dev), on login and every registration step. Only resets after a full day **without** requests | The request fails with "Max records reached" | The tests send `User-Agent: curupira-e2e`; agree on an allowance for it before CI runs daily. Details in [docs/wallet.md](docs/wallet.md#rate-limit) |
 
 **When adding a test:**
 
@@ -22,8 +22,9 @@ The tests use the app like a user, but much faster and many times in a row. The 
 ## Data
 
 - **Each test creates what it needs.** Do not depend on another test having run before, or on data "that is already there".
-- **Test data carries the `e2e` prefix where the app allows it**, so it can be found and deleted on staging. The wallet rejects `+` in e-mails and digits in names, so use e-mails like `e2e.<id>@teste.com` and names like `Teste Automatizado ...`.
-- **Unique values** (`Date.now()`) for anything the app requires not to repeat, and to avoid per-user limits.
+- **Test data carries the `e2e` prefix where the app allows it**, so it can be found and deleted on staging. The wallet rejects `+` in e-mails and digits in names, so e-mails are `e2e.<id>@emcash.test` and names `Teste Automatizado ...`. Use `newUser()` from `support/data.ts`.
+- **Never send SMS or e-mail to someone real.** Staging sends them for real: e-mails go to `@emcash.test` (a reserved TLD, nobody receives it), and cellphones must be agreed test numbers before a test that sends SMS runs on staging.
+- **Unique values** for anything the app requires not to repeat (CPF, e-mail, device, push token), and to avoid per-user limits.
 - **Credentials come from the environment** (`.env` locally, variables and secrets on CI), never hard-coded in the test.
 - **Codes sent by SMS or e-mail** (OTP) are read from the service's database, never from a real phone or inbox.
 - **Never point the tests at an environment with real data.** They create data.
@@ -40,7 +41,9 @@ The tests use the app like a user, but much faster and many times in a row. The 
 
 - **Call the API the way the app does**: same endpoint, same fields. If the app always sends a field (like the wallet's push token), the test sends it too, with a value as unique as the real one (one push token per device).
 - **Check the status and the body** the app relies on (`token_type`, `access_token`, the error `code`), not just the status.
-- **Use `await expect(response).toBeOK()`**: when it fails, it prints the response body, which usually says exactly what is wrong.
+- **Use `await expect(response).toBeOK()`**: when it fails, it prints the response body, which usually says exactly what is wrong. When the exact status matters, pass the body as the message: `expect(response.status(), await response.text()).toBe(200)`.
+- **Prove a token works** by using it once (e.g. `GET /usuario`), not only by checking it is present.
+- **Cover the cheap negative cases** that protect a rule (e.g. registration without a confirmed SMS is rejected). They send nothing and run in milliseconds.
 
 ## Waiting and checking
 
@@ -53,4 +56,4 @@ The tests use the app like a user, but much faster and many times in a row. The 
 1. Read the message in the terminal: it shows the line and the received value.
 2. Open `test-results/<test-name>/error-context.md`: the error and, for UI tests, what was on screen. For the full step-by-step, open the `trace.zip` in the same folder with `npx playwright show-trace` or at [trace.playwright.dev](https://trace.playwright.dev).
 3. On CI, download the `playwright-report` artifact from the run page.
-4. Before changing the test, ask whether it found a real problem. The first wallet test did: see "Known app pitfalls" in [CLAUDE.md](CLAUDE.md).
+4. Before changing the test, ask whether it found a real problem. The first wallet test did: see the bug in [docs/wallet.md](docs/wallet.md#rules-that-bite).

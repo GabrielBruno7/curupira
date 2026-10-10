@@ -1,40 +1,49 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures';
+import { env } from '../../support/env';
 
-const walletApi = process.env.WALLET_API_URL;
-const username = process.env.WALLET_USERNAME;
-const password = process.env.WALLET_PASSWORD;
-const deviceId = process.env.WALLET_DEVICE_ID;
-
-if (!walletApi || !username || !password || !deviceId) {
-  throw new Error('Set WALLET_API_URL, WALLET_USERNAME, WALLET_PASSWORD and WALLET_DEVICE_ID (see .env.example).');
-}
+type Token = {
+  access_token: string;
+  token_type: string;
+};
 
 const pushToken = 'e2e:push-token';
 
-test('login with the right credentials returns a token', async ({ request }) => {
+test('login with the right credentials returns a working token', { tag: '@api' }, async ({ request }) => {
+  const walletApi = env('WALLET_API_URL');
+
   const response = await request.post(`${walletApi}/v3/login`, {
     data: {
-      usuario: username,
-      senha: password,
-      identificador: deviceId,
+      usuario: env('WALLET_USERNAME'),
+      senha: env('WALLET_PASSWORD'),
+      identificador: env('WALLET_DEVICE_ID'),
       token: pushToken,
     },
   });
 
-  expect(response.status()).toBe(200);
+  expect(response.status(), await response.text()).toBe(200);
 
-  expect(await response.json()).toMatchObject({
+  const body = (await response.json()) as Token;
+
+  expect(body).toMatchObject({
     token_type: 'Bearer',
-    access_token: expect.any(String),
+    access_token: expect.stringMatching(/\S+/),
   });
+
+  const profile = await request.get(`${walletApi}/usuario`, {
+    headers: {
+      Authorization: `Bearer ${body.access_token}`,
+    },
+  });
+
+  await expect(profile).toBeOK();
 });
 
-test('login with the wrong password is rejected', async ({ request }) => {
-  const response = await request.post(`${walletApi}/v3/login`, {
+test('login with the wrong password is rejected', { tag: '@api' }, async ({ request }) => {
+  const response = await request.post(`${env('WALLET_API_URL')}/v3/login`, {
     data: {
-      usuario: username,
+      usuario: env('WALLET_USERNAME'),
       senha: 'wrong-password',
-      identificador: deviceId,
+      identificador: env('WALLET_DEVICE_ID'),
       token: pushToken,
     },
   });

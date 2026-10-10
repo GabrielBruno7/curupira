@@ -1,18 +1,13 @@
-import { test, expect } from '@playwright/test';
-
-const portalUrl = process.env.MULTIPORTAL_URL;
-
-if (!portalUrl) {
-  throw new Error('Set MULTIPORTAL_URL (see .env.example).');
-}
+import { test, expect } from '../support/fixtures';
+import { env } from '../support/env';
 
 test('logging in with the wrong password shows the error', async ({ page }) => {
   await test.step('open the login screen', async () => {
-    await page.goto(`${portalUrl}/login`);
+    await page.goto(`${env('MULTIPORTAL_URL')}/login`);
   });
 
   await test.step('log in with a wrong password', async () => {
-    await page.getByLabel('E-mail').fill(`e2e.${Date.now()}@teste.com`);
+    await page.getByLabel('E-mail').fill('e2e.wrong-password@emcash.test');
     await page.getByLabel('Senha', { exact: true }).fill('wrong-password');
     await page.getByRole('button', { name: 'Entrar' }).click();
   });

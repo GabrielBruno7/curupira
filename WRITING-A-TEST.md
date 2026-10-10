@@ -9,18 +9,18 @@ The path of a test, from the idea to running on its own on CI. The errors listed
 Before opening the editor, write the test the way someone would do it by hand. It usually comes from a story's acceptance criteria or from a bug that already happened.
 
 ```
-Given   I have an item
-When    I delete the item
-Then    it disappears from the list and a message with "Desfazer" shows up
-When    I tap "Desfazer"
-Then    the item is back in the list
+Given   a new user who confirmed the cellphone and the e-mail
+When    they register and log in for the first time
+Then    the app asks for the additional information
+When    they send the additional information
+Then    the registration is complete
 ```
 
 **Is it worth an e2e test?** E2E is slow and expensive to maintain. Use it for the **paths the user feels when they break**: login, sign-up, the main flow. Detailed rules, like "maximum amount of R$ 1,000,000", belong in the application team's unit tests.
 
 ## 2. Do it by hand in the test environment
 
-Open the app in the test environment (never an environment with real data), go through the scenario and write down:
+Go through the scenario in the test environment (never an environment with real data): in the app or portal for a UI test, or with `curl` for an API test. Before testing a service, read its file in `docs/`. Write down:
 
 - **the exact text** of each button, link and field;
 - **what shows up at the end**, which becomes the check;
@@ -30,29 +30,31 @@ Open the app in the test environment (never an environment with real data), go t
 
 **Shortcut:** with Node on your machine, `npx playwright codegen <address>` opens the browser and writes code while you click. Use it as a draft, not as a finished test: it does not know what to check.
 
-**API test?** Find out what the app sends (the API docs, the app team, or the API's own tests) and try it with `curl` first.
+**API test?** Find out what the app sends (the API docs, the app team, or the service's own tests, like the wallet's `tests/acceptance/`) and try it with `curl` first.
 
 ## 3. Turn the steps into code
 
-Create a branch and copy [`examples/template.spec.ts`](examples/template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). For now the folder is the product where the user starts the journey, even if it goes through several services (the final organization is up to QA). Write **the steps first, as empty `test.step`s**:
+Create a branch and copy [`examples/api-template.spec.ts`](examples/api-template.spec.ts) or [`examples/web-template.spec.ts`](examples/web-template.spec.ts) to `tests/<product>/` (the name must end in `.spec.ts`). For now the folder is the product where the user starts the journey, even if it goes through several services (the final organization is up to QA). Write **the steps first, as empty `test.step`s**:
 
 ```ts
-import { test, expect } from '@playwright/test';
+import { test, expect } from '../../support/fixtures';
 
-test('deleting an item and undoing it', async ({ page }) => {
-  await test.step('create a new user with one item', async () => {});
+test('simplified registration up to the additional information', { tag: '@api' }, async ({ request }) => {
+  await test.step('confirm the cellphone and the e-mail', async () => {});
 
-  await test.step('delete the item', async () => {});
+  await test.step('register the user', async () => {});
 
-  await test.step('the item is gone and "Desfazer" shows up', async () => {});
+  await test.step('log in on the first device', async () => {});
 
-  await test.step('undo', async () => {});
+  await test.step('the app asks for the additional information', async () => {});
 
-  await test.step('the item is back', async () => {});
+  await test.step('send the additional information', async () => {});
+
+  await test.step('the registration is complete', async () => {});
 });
 ```
 
-Then fill in each step with what you wrote down in step 2, following the code style in [CLAUDE.md](CLAUDE.md#code-style) (no comments, one field per line). If another test already has the same setup (create a user, log in), copy it from there; [`tests/app/registration.spec.ts`](tests/app/registration.spec.ts) creates a new user from scratch.
+Then fill in each step with what you wrote down in step 2, following the code style in [CLAUDE.md](CLAUDE.md#code-style) (comments only for *why*, one field per line). Use `newUser()` for test data and the `walletDb` fixture for verification codes; [`tests/app/registration.spec.ts`](tests/app/registration.spec.ts) is the full example.
 
 ## 4. Run just this test, and fix it
 
@@ -68,6 +70,7 @@ The most common errors:
 |---|---|---|
 | `strict mode violation` | Two elements with the same text (e.g. a link in the main menu and another in a submenu), or one text inside another ("Senha" and "Confirmar senha") | Search **inside** the right region: `page.getByRole('navigation', { name: 'Submenu' }).getByRole('link', { name: 'Itens' })`, or use `{ exact: true }` |
 | `Test timeout` waiting for a locator | The element exists, but with another role (it was a `button`, not a `menuitem`) | Use the role `error-context.md` shows: `getByRole('button', { name: 'Excluir' })` |
+| `toBeOK() failed` on an API call | The response body, e.g. `"Nome do usuário poderá ter apenas letras"` | Fix the data the test sends, and write the rule in the service's `docs/` file |
 | `toBeHidden` failed | The action **worked**, but the same text showed up somewhere else (e.g. a suggestion in the empty list) | Check something **only the created item** has, like its actions button |
 
 The third is the trickiest: the app was right, but the test was looking at the wrong element. That is why you always check in the trace **what** the locator found.
@@ -76,7 +79,7 @@ The third is the trickiest: the app was right, but the test was looking at the w
 
 The most forgotten step. Break the scenario on purpose and confirm the test **fails**:
 
-- skip an essential step (the `Desfazer`, the additional information), or send a wrong code or password: the test must fail;
+- skip an essential step (e.g. the additional information), or send a wrong code or password: the test must fail;
 - or change the expected text to a wrong one.
 
 If it still passes, the test is not testing anything. Then put it back.
@@ -97,7 +100,9 @@ docker compose run --rm tests
 - [ ] The test fails when the scenario breaks (step 5).
 - [ ] It passed in more than one run (step 6).
 - [ ] The test name says what it checks.
-- [ ] Code and test names are in English, with no comments.
+- [ ] Code and test names are in English; comments only say *why*.
+- [ ] `npm run typecheck` and `npm run lint` pass.
+- [ ] Does it send SMS or e-mail? Then it only uses `@emcash.test` e-mails and agreed test cellphones on staging.
 
 Someone reviews the PR, like application code. After the merge, the test runs on its own on the next staging deploy.
 
