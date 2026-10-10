@@ -62,7 +62,7 @@ O `.env.example` já vem com os valores da wallet local. Um serviço rodando na 
 ## ✍️ Vai escrever um teste?
 
 > [!TIP]
-> **Com o Claude Code:** rode `/write-e2e-test` e diga qual jornada quer testar (ex.: "a proposta do BTG"). Ele pesquisa o fluxo no código dos serviços enquanto te faz perguntas, combina o cenário com você e só então escreve o teste, roda e faz ele falhar de propósito.
+> **Com o Claude Code:** rode `/write-e2e-test` e diga qual jornada quer testar. Ele pesquisa o fluxo no código dos serviços enquanto te faz perguntas, combina o cenário com você e só então escreve o teste, roda e faz ele falhar de propósito.
 
 Na mão, siga o [**passo a passo**](WRITING-A-TEST.md) (em inglês, como todo o resto do código). Em resumo:
 
